@@ -2,12 +2,13 @@
 
 This contains a number of plugins for making it easier to work with Gradle and Adobe CQ/AEM.
 
+[ ![Download](https://api.bintray.com/packages/twcable/aem/gradle-plugin-cq-bundle/images/download.svg) ](https://bintray.com/twcable/aem/gradle-plugin-cq-bundle/_latestVersion)
+
 # Installation #
 
 ```
 buildscript {
     repositories {
-        jcenter()
         maven {
             url "http://dl.bintray.com/twcable/aem"
         }
@@ -20,8 +21,6 @@ buildscript {
 ```
 
 Built against **Gradle 2.8**
-
-[ ![Download](https://api.bintray.com/packages/twcable/aem/gradle-plugin-cq-bundle/images/download.svg) ](https://bintray.com/twcable/aem/gradle-plugin-cq-bundle/_latestVersion)
 
 # Usage #
 

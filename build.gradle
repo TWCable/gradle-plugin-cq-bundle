@@ -14,7 +14,7 @@ plugins {
 }
 
 group = 'com.twcable.gradle'
-description = 'Gradle plugin for working with the Eclipse Bundlor tool'
+description = 'Gradle plugins for working with OSGi bundles in Adobe CQ/AEM'
 
 apply plugin: 'groovy'
 
@@ -39,9 +39,8 @@ dependencies {
 
 bintray {
     pkg {
-        issueTrackerUrl = 'https://github.com/TWCable/gradle-plugin-bundlor/issues'
         licenses = ['Apache-2.0']
-        attributes = ['plat': ['gradle', 'osgi']]
+        attributes = ['plat': ['gradle', 'aem', 'osgi', 'sling', 'cq']]
 
         //noinspection GroovyAssignabilityCheck
         version {
