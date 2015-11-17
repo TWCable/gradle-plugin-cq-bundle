@@ -2,7 +2,8 @@
 
 This contains a number of plugins for making it easier to work with Gradle and Adobe CQ/AEM.
 
-[ ![Download](https://api.bintray.com/packages/twcable/aem/gradle-plugin-cq-bundle/images/download.svg) ](https://bintray.com/twcable/aem/gradle-plugin-cq-bundle/_latestVersion)
+[ ![Download](https://api.bintray.com/packages/twcable/aem/gradle-plugin-cq-bundle/images/download.svg) ](https://bintray.com/twcable/aem/gradle-plugin-cq-bundle/_latestVersion) [![Stories in Ready](https://badge.waffle.io/TWCable/gradle-plugin-cq-bundle.png?label=ready&title=Ready)](https://waffle.io/TWCable/gradle-plugin-cq-bundle) 
+
 
 # Installation #
 
