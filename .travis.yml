@@ -1,5 +1,15 @@
+sudo: false
 language: java
 install: ""
-script: TERM=dumb ./gradlew clean check
+script: ./gradlew check
 jdk:
-    - openjdk7
+    - oraclejdk8
+
+# Caching per https://docs.travis-ci.com/user/languages/java/
+before_cache:
+  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -f $HOME/.gradle/caches/2.9/plugin-resolution/cache.properties.lock
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
