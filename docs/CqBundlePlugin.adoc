@@ -1,84 +1,42 @@
-= CQ Package Plugin
+= CQ Bundle Plugin
 :toc:
 :toc-placement!:
 :toc-title:
 
 toc::[]
 
+
+////
+## Configuration ###
+
+////
+
+
 == Usage
 
-`apply plugin: "cqpackage"`
+`apply plugin: 'com.twcable.cq-bundle'`
 
-The standard Gradle "base" plugin is automatically applied.
-
-== Tasks
 
 [horizontal]
-createPackage::
-  Creates the CQ Package zip file. See description below.
+uploadBundle::
+  Uploads the bundle to the CQ server. The task will fail if the bundle fails to start.
 
-install::
-  Issues the command to CQ to install the uploaded package.
+deleteBundle::
+ Removes the current bundle from CQ. This task will not fail if the bundle does not exist.
 
-uninstall::
-  Uninstalls the CQ Package. If the package is not on the server, nothing happens.
-  (i.e., This does not fail if the package is not on the server.)
+startBundle::
+  Start the bundle on the servers.
 
-reinstall::
-  Convenience task that simple depends on `clean`, `uninstall`, `remove`, `install`, then `verifyBundles`.
+stopBundle::
+  Stop the bundle on the servers.
 
-installPackage::
-  Installs the CQ Package that has been uploaded. **Note** Uses the name of the package. See below.
+refreshAllBundles::
+  Tells CQ to refresh all the bundles. This gets added to the top-level project and generally a good idea
+  to run after any of the other tasks.
 
-validateBundles::
-  Checks all the JARs that are included in the package to make sure they are installed and in an
-  ACTIVE state and gives a report of any that are not. This task polls in the case the bundles are newly installed.
-
-installRemote::
-  Issues the command to CQ to install the uploaded package to a remote server defined
-  by `-Denvironment`, `-DenvJson`, and `-Dpackage`.
-
-validateRemoteBundles::
-  Validates remote bundles in the CQ Package are started correctly
-
-upload::
-  Upload the package to all the servers defined by the `slingServers` configuration.
-
-uploadRemote::
-  Upload the package to all the servers defined by `-Denvironment`, `-DenvJson`, and `-Dpackage`.
-
-remove::
-  Removes the package from CQ. Does not fail if the package was not on the server to begin with.
-
-uninstallBundles::
-  Downloads the currently installed package .zip file if it exists, compiles list of bundles
-  based off what is currently installed, then stops and uninstalls each bundles individually. A final
-  `refreshAllBundles` is performed.
-
-installRemoteTask::
-  Installs a specified CQ Package to a remote environment.
-
-verifyBundles::
-  Checks all the JARs that are included in the package to make sure they are OSGi compliant, and
-  gives a report of any that are not. Never causes the build to fail.
-
-addBundlesToFilterXml::
-  Adds the bundles to the `filter.xml`
-
-checkBundleStatus::
-  Check Bundle Status
-
-startInactiveBundles::
-  Asynchronously attempts to start any bundle in RESOLVED state.
-
-**Added by the 'base' plugin:**
-
-[horizontal]
-assemble::
-  Calls `createPackage`.
-
-clean::
-  Removes the build directory.
+showBundle::
+  Shows a JSON representation of the information CQ has about the bundle, including its status,
+    what bundles it is using, and what bundles are using it to STDOUT.
 
 
 == Configuration
@@ -125,8 +83,25 @@ The `active` property determines if it will try to interact with that server. If
 the server, it is automatically set to be `false` so it does not keep trying to attach to a server that is not running.
 
 If `envJson` and `environment` properties are defined, the list of servers for this environment are extracted from
-the JSON file.  See link:../src/main/groovy/com/twcable/gradle/sling/EnvironmentJsonFileReader.groovy[EnvironmentJsonFileReader]
+the JSON file.  See link:../src/main/groovy/com/twcable/gradle/sling/EnvironmentFileReader.groovy[EnvironmentFileReader]
 
+=== Convention: `bundle`
+
+By default, the plugin is initialized with the following effective configuration:
+
+[source,groovy]
+--
+bundle.with {
+  name = project.name
+  symbolicName = // computed from project.group and project.name
+  installPath = project.slingServers.author.installPath
+  sourceFile = project.jar.archivePath
+  slingServers = project.slingServers
+}
+--
+
+`bundle` also has a `felixId` property that the plugin tries to determine dynamically from the server based on the
+bundle's symbolic name.
 
 == Task `createPackage`
 
