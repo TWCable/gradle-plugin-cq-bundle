@@ -13,6 +13,14 @@ plugins {
     id 'com.jfrog.bintray' version '1.4'
 }
 
+plugins {
+    id 'com.gradle.build-receipt' version '1.0'
+}
+buildReceiptLicense {
+    agreementUrl = 'https://gradle.com/terms-of-service'
+    agree = 'yes'
+}
+
 group = 'com.twcable.gradle'
 description = 'Gradle plugins for working with OSGi bundles in Adobe CQ/AEM'
 
