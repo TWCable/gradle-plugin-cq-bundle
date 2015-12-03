@@ -83,3 +83,22 @@ defaults {
 wrapper {
     gradleVersion = 2.9
 }
+
+javadoc {
+    options.showFromPackage()
+}
+
+// Hack around Oracle's breaking changes to JDK 1.8 Javadoc tool
+if (JavaVersion.current().isJava8Compatible()) {
+    allprojects {
+        tasks.withType(Javadoc) {
+            options.addStringOption('Xdoclint:none', '-quiet')
+        }
+    }
+}
+
+groovydoc {
+    link("https://jsr-305.googlecode.com/svn/trunk/javadoc/", "javax.annotation")
+    link("http://docs.oracle.com/javase/8/docs/api/", 'java.')
+    link("http://docs.groovy-lang.org/latest/html/api/", 'groovy.')
+}
