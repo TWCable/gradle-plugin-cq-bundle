@@ -20,9 +20,9 @@ import org.junit.After
 import spock.lang.Specification
 import spock.lang.Subject
 
-@Subject(EnvironmentJsonFileReader)
+@Subject(EnvironmentFileReader)
 @SuppressWarnings("GroovyPointlessBoolean")
-class EnvironmentJsonFileReaderSpec extends Specification {
+class EnvironmentFileReaderSpec extends Specification {
 
     @After
     public void clearProperties() {
@@ -38,8 +38,6 @@ class EnvironmentJsonFileReaderSpec extends Specification {
         SlingServersConfiguration servers = new SlingServersConfiguration()
 
         expect:
-        servers.clusterAuths == true
-        servers.clusterPubs == false
         servers.collect { it.name }.sort().unique(false) == ["cq-auth01-4502",
                                                              "cq-pub01-4503",
                                                              "cq-pub02-4503"]
@@ -60,8 +58,6 @@ class EnvironmentJsonFileReaderSpec extends Specification {
         SlingServersConfiguration servers = new SlingServersConfiguration()
 
         expect:
-        servers.clusterAuths == false
-        servers.clusterPubs == false
         servers.collect { it.name }.sort().unique(false) == ["cq-auth01-4502",
                                                              "cq-auth02-4502",
                                                              "cq-pub01-4503",
@@ -84,8 +80,6 @@ class EnvironmentJsonFileReaderSpec extends Specification {
         SlingServersConfiguration servers = new SlingServersConfiguration()
 
         expect:
-        servers.clusterAuths == true
-        servers.clusterPubs == true
         servers.collect { it.name }.sort().unique(false) == ["cq-auth01-4502",
                                                              "cq-pub01-4503"]
         servers.collect { it.protocol }.unique(false) == ["http"]
@@ -104,8 +98,6 @@ class EnvironmentJsonFileReaderSpec extends Specification {
         SlingServersConfiguration servers = new SlingServersConfiguration()
 
         expect:
-        servers.clusterAuths == false
-        servers.clusterPubs == true
         servers.collect { it.name }.sort().unique(false) == ["cq-auth01-4502",
                                                              "cq-auth02-4502",
                                                              "cq-pub01-4503"]

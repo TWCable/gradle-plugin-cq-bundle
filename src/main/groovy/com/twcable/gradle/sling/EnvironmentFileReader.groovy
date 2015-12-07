@@ -25,39 +25,74 @@ import org.gradle.api.GradleException
  * <p>
  * Sample of what the JSON looks like:
  * <pre>
- * &nbsp;{ &nbsp;
- *   "testEnv" : {&nbsp;
- *     "authors": {&nbsp;
- *       "cq-auth01": "4502",
- *       "cq-auth02": "4502"
- *     &nbsp;},
- *     "publishers": {&nbsp;
- *       "cq-pub01": "4503",
- *       "cq-pub02": "4503"
- *     &nbsp;},
- *     "dispatchers": [
- *       "cq-web01",
- *       "cq-web02"
- *     ],
- *     "cnames": [ "site1", "site2"],
- *     "domainName": "test.myco.com",
- *     "protocol": "http",
- *     "username": "admin",
- *     "password": "admin",
- *     "clusterAuths": true,
- *     "clusterPubs": false
- *   &nbsp;}&nbsp;
- *}&nbsp;
+ * {
+ *   "testEnv" : {
+ *      "authors": {
+ *        "cq-auth01": "4502",
+ *        "cq-auth02": "4502"
+ *      },
+ *      "publishers": {
+ *        "cq-pub01": "4503",
+ *        "cq-pub02": "4503"
+ *      },
+ *      "domainName": "test.myco.com",
+ *      "protocol": "http",
+ *      "username": "admin",
+ *      "password": "admin",
+ *      "clusterAuths": true,
+ *      "clusterPubs": false
+ *    }
+ * }
  * </pre>
+ *
+ * Assuming the "slingServers.env.name" property (see documentation for {@link SlingServersConfiguration}) is "testEnv",
+ * the above example would be translated to this {@link SlingServersConfiguration}:<pre>
+ *   {
+ *     retryWaitMs=1000,
+ *     maxWaitValidateBundlesMs=10000,
+ *     servers=[
+ *       cq-pub01-4503: [
+ *         name: cq-pub01-4503,
+ *         protocol: http,
+ *         port: 4503,
+ *         machineName: cq-pub01.test.myco.com,
+ *         username: admin,
+ *         password: admin,
+ *         active: true
+ *       ],
+ *       cq-pub02-4503: [
+ *         name: cq-pub02-4503,
+ *         protocol: http,
+ *         port: 4503,
+ *         machineName: cq-pub02.test.myco.com,
+ *         username: admin,
+ *         password: admin,
+ *         active: true
+ *       ],
+ *       cq-auth01-4502: [
+ *         name: cq-auth01-4502,
+ *         protocol: http,
+ *         port: 4502,
+ *         machineName: cq-auth01.test.myco.com,
+ *         username: admin,
+ *         password: admin,
+ *         active: true
+ *       ]
+ *     ]
+ *   }
+ * </pre>
+ *
+ * As shown in the example, if "clusterAuths" is true, only the first server in the "authors" section is used. The
+ * same would be true of the publishers if "clusterPubs" were true.
  */
 @Slf4j
 @CompileStatic
-class EnvironmentJsonFileReader {
+class EnvironmentFileReader {
 
-    static Map<String, SlingServerConfiguration> getServersFromJsonFile(SlingServersConfiguration serversConf, String jsonFileName, String envName) {
-        Map environment = getEnvironmentFromJsonFile(jsonFileName, envName)
+    static Map<String, SlingServerConfiguration> getServersFromFile(String fileName, String envName) {
+        Map environment = getEnvironmentFromFile(fileName, envName)
         if (!environment) {
-            log.warn "Could not find \"${envName}\" in \"${jsonFileName}\""
+            log.warn "Could not find \"${envName}\" in \"${fileName}\""
             return [:]
         }
 
@@ -65,8 +100,6 @@ class EnvironmentJsonFileReader {
         def publishers = environment.publishers as Map
         def clusterAuths = environment.clusterAuths as boolean
         def clusterPubs = environment.clusterPubs as boolean
-        serversConf.clusterAuths = clusterAuths
-        serversConf.clusterPubs = clusterPubs
 
         if (authors) {
             if (clusterAuths)
@@ -75,7 +108,7 @@ class EnvironmentJsonFileReader {
                 return unclusteredAuthors(environment, publishers, authors, clusterPubs)
         }
         else {
-            if (!publishers) throw new GradleException("There are no authors or publishers defined in ${jsonFileName}")
+            if (!publishers) throw new GradleException("There are no authors or publishers defined in ${fileName}")
 
             return noAuthors(environment, clusterPubs, publishers)
         }
@@ -89,10 +122,10 @@ class EnvironmentJsonFileReader {
             def firstPubKey = publishers.keySet().first()
             def firstPub = [(firstPubKey): "${publishers[firstPubKey]}"]
 
-            return jsonMapToServerConfMap(environment, firstPub)
+            return fileMapToServerConfMap(environment, firstPub)
         }
         else { // unclustered pubs, no auths
-            return jsonMapToServerConfMap(environment, publishers)
+            return fileMapToServerConfMap(environment, publishers)
         }
     }
 
@@ -106,16 +139,16 @@ class EnvironmentJsonFileReader {
                 def firstPubKey = publishers.keySet().first()
                 def firstPub = [(firstPubKey): "${publishers[firstPubKey]}"]
 
-                def pubInstance = jsonMapToServerConfMap(environment, firstPub)
-                return jsonMapToServerConfMap(environment, authors) + pubInstance
+                def pubInstance = fileMapToServerConfMap(environment, firstPub)
+                return fileMapToServerConfMap(environment, authors) + pubInstance
             }
             else { // unclustered pubs, unclustered auths
-                return jsonMapToServerConfMap(environment, publishers) +
-                    jsonMapToServerConfMap(environment, authors)
+                return fileMapToServerConfMap(environment, publishers) +
+                    fileMapToServerConfMap(environment, authors)
             }
         }
         else { // no pubs, unclustered auths
-            return jsonMapToServerConfMap(environment, authors)
+            return fileMapToServerConfMap(environment, authors)
         }
     }
 
@@ -127,17 +160,17 @@ class EnvironmentJsonFileReader {
         def firstAuthorKey = authors.keySet().first()
         def firstAuthor = [(firstAuthorKey): "${authors[firstAuthorKey]}"]
 
-        def authInstance = jsonMapToServerConfMap(environment, firstAuthor)
+        def authInstance = fileMapToServerConfMap(environment, firstAuthor)
         if (publishers) {
             if (clusterPubs) { // clustered pubs, clustered auths
                 def firstPubKey = publishers.keySet().first()
                 def firstPub = [(firstPubKey): "${publishers[firstPubKey]}"]
 
-                def pubInstance = jsonMapToServerConfMap(environment, firstPub)
+                def pubInstance = fileMapToServerConfMap(environment, firstPub)
                 return authInstance + pubInstance
             }
             else { // unclustered pubs, clustered auths
-                return jsonMapToServerConfMap(environment, publishers) + authInstance
+                return fileMapToServerConfMap(environment, publishers) + authInstance
             }
         }
         else { // no pubs, clustered auths
@@ -146,16 +179,16 @@ class EnvironmentJsonFileReader {
     }
 
 
-    private static Map getEnvironmentFromJsonFile(String jsonFileName, String envName) {
-        File jsonFile = new File(jsonFileName)
+    private static Map getEnvironmentFromFile(String filename, String envName) {
+        File file = new File(filename)
 
-        def jsonEnvironments = new JsonSlurper().parseText(jsonFile.getText()) as Map
+        def jsonEnvironments = new JsonSlurper().parseText(file.getText()) as Map
 
         return jsonEnvironments.get(envName) as Map
     }
 
 
-    private static Map<String, SlingServerConfiguration> jsonMapToServerConfMap(Map environment, Map hostAndPort) {
+    private static Map<String, SlingServerConfiguration> fileMapToServerConfMap(Map environment, Map hostAndPort) {
         return hostAndPort.collectEntries { hostname, port ->
             return ["${hostname}-${port}":
                         new SlingServerConfiguration(
