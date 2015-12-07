@@ -15,7 +15,6 @@
  */
 package com.twcable.gradle.sling
 
-import com.twcable.gradle.http.SimpleHttpClient
 import groovy.transform.TypeChecked
 import groovy.util.logging.Slf4j
 import org.gradle.api.GradleException
@@ -33,12 +32,10 @@ import org.gradle.api.GradleException
  *
  * <h3>System Properties</h3>
  * If "envJson" and "environment" properties are defined, the list of servers for this environment are extracted from
- * the JSON file.  See {@link EnvironmentJsonFileReader}.
+ * the JSON file.  See {@link EnvironmentFileReader}.
  *
  * @see SlingServersConfiguration#retryWaitMs
  * @see SlingServersConfiguration#maxWaitValidateBundlesMs
- * @see SlingServersConfiguration#clusterAuths
- * @see SlingServersConfiguration#clusterPubs
  */
 @Slf4j
 @TypeChecked
@@ -64,24 +61,6 @@ class SlingServersConfiguration implements Iterable<SlingServerConfiguration> {
      */
     long maxWaitValidateBundlesMs = 10000
 
-    /**
-     * Are the authors clustered? Defaults to false.
-     */
-    boolean clusterAuths
-
-    /**
-     * Predicate taking a bundle's name and returning true if it should uninstall the bundle as part
-     * of "uninstallAllBundles".
-     *
-     * @see XSlingOsgiBundle#uninstallAllBundles(List, SimpleHttpClient, SlingServerConfiguration, Closure)
-     */
-    Closure<Boolean> uninstallBundlesPredicate
-
-    /**
-     * Are the publishers clustered? Defaults to false.
-     */
-    boolean clusterPubs
-
 
     SlingServersConfiguration() {
         def envJsonFilename = System.getProperty('envJson')
@@ -91,7 +70,7 @@ class SlingServersConfiguration implements Iterable<SlingServerConfiguration> {
             if (!envName) {
                 throw new GradleException("When using the 'envJson' property, you must also specify the 'environment' property")
             }
-            servers = EnvironmentJsonFileReader.getServersFromJsonFile(this, envJsonFilename, envName)
+            servers = EnvironmentFileReader.getServersFromFile(envJsonFilename, envName)
         }
         else {
             servers = defaultServers()
