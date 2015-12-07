@@ -22,7 +22,7 @@
 <html>
 <head>
 
-<title>com.twcable.gradle.sling (gradle-plugin-cq-bundle 1.0.0 API)</title>
+<title>com.twcable.gradle.sling (gradle-plugin-cq-bundle 1.0.1-dev.11+6e5c93b API)</title>
 <meta name="keywords" content="com.twcable.gradle.sling package">
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <link rel ="stylesheet" TYPE="text/css" HREF="../../../../stylesheet.css" title="Style">
@@ -31,7 +31,7 @@
 <script type="text/javascript">
 function windowTitle()
 {
-    parent.document.title="com.twcable.gradle.sling (gradle-plugin-cq-bundle 1.0.0 API)";
+    parent.document.title="com.twcable.gradle.sling (gradle-plugin-cq-bundle 1.0.1-dev.11+6e5c93b API)";
 }
 </script>
 <noscript>
@@ -76,6 +76,48 @@ function windowTitle()
 <div class="contentContainer">
 
 
+    <div class="summary">
+        <ul class="blockList">
+            <li class="blockList">
+                <table border="0" cellpadding="3" cellspacing="0" summary="Interface Summary">
+                    <caption><span>Interface Summary</span><span class="tabEnd">&nbsp;</span></caption>
+                    <tbody>
+                    <tr>
+                        <th class="colFirst" scope="col">Interface</th>
+                        <th class="colLast" scope="col">Description</th>
+                    </tr>
+<tr class="altColor">
+                            <td class="colOne">
+                                <strong><a href="SlingSupport.BlockPredicate.html" title="class in com/twcable/gradle/sling">
+                                    SlingSupport.BlockPredicate
+                                </a></strong>
+                            </td>
+                            <td>Functional interface for <a href='#block(long, BlockPredicate, java.lang.Runnable, long)'>block(long, BlockPredicate, Runnable, long)</a></td>
+                        </tr>
+<tr class="altColor">
+                            <td class="colOne">
+                                <strong><a href="SlingSupport.HttpClientAction.html" title="class in com/twcable/gradle/sling">
+                                    SlingSupport.HttpClientAction
+                                </a></strong>
+                            </td>
+                            <td>Functional interface for <a href='#doHttp(HttpClientAction)'>doHttp(HttpClientAction)</a></td>
+                        </tr>
+<tr class="altColor">
+                            <td class="colOne">
+                                <strong><a href="SlingSupportFactory.html" title="class in com/twcable/gradle/sling">
+                                    SlingSupportFactory
+                                </a></strong>
+                            </td>
+                            <td>Factory for creating new instances of <a href='../../../../com/twcable/gradle/sling/SlingSupport.html' title='SlingSupport'>SlingSupport</a></td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </li>
+            </ul>
+        </div>
+    
+
 
 
     <div class="summary">
@@ -90,11 +132,19 @@ function windowTitle()
                     </tr>
 <tr class="altColor">
                             <td class="colOne">
-                                <strong><a href="EnvironmentJsonFileReader.html" title="class in com/twcable/gradle/sling">
-                                    EnvironmentJsonFileReader
+                                <strong><a href="EnvironmentFileReader.html" title="class in com/twcable/gradle/sling">
+                                    EnvironmentFileReader
                                 </a></strong>
                             </td>
                             <td>Handles reading the environment JSON file.</td>
+                        </tr>
+<tr class="altColor">
+                            <td class="colOne">
+                                <strong><a href="SimpleSlingSupportFactory.html" title="class in com/twcable/gradle/sling">
+                                    SimpleSlingSupportFactory
+                                </a></strong>
+                            </td>
+                            <td>Implementation of <a href='../../../../com/twcable/gradle/sling/SlingSupportFactory.html' title='SlingSupportFactory'>SlingSupportFactory</a> that simply calls <a href='../../../../com/twcable/gradle/sling/SlingSupport.html#SlingSupport(com.twcable.gradle.sling.SlingServerConfiguration)' title='SlingSupport.SlingSupport'>SlingSupport.SlingSupport</a></td>
                         </tr>
 <tr class="altColor">
                             <td class="colOne">
@@ -114,19 +164,43 @@ function windowTitle()
                         </tr>
 <tr class="altColor">
                             <td class="colOne">
+                                <strong><a href="SlingServersConfiguration.Configuration.html" title="class in com/twcable/gradle/sling">
+                                    SlingServersConfiguration.Configuration
+                                </a></strong>
+                            </td>
+                            <td>"Named type" for working with the a mapping of server environment configuration keys and their values</td>
+                        </tr>
+<tr class="altColor">
+                            <td class="colOne">
+                                <strong><a href="SlingServersConfiguration.EnvFileInfo.html" title="class in com/twcable/gradle/sling">
+                                    SlingServersConfiguration.EnvFileInfo
+                                </a></strong>
+                            </td>
+                            <td>Tuple for holding information about loading envionment configurations from a file</td>
+                        </tr>
+<tr class="altColor">
+                            <td class="colOne">
+                                <strong><a href="SlingServersConfiguration.EnvironmentVariables.html" title="class in com/twcable/gradle/sling">
+                                    SlingServersConfiguration.EnvironmentVariables
+                                </a></strong>
+                            </td>
+                            <td>"Named type" for working with the results of System.getenv()</td>
+                        </tr>
+<tr class="altColor">
+                            <td class="colOne">
+                                <strong><a href="SlingServersConfiguration.ServersMap.html" title="class in com/twcable/gradle/sling">
+                                    SlingServersConfiguration.ServersMap
+                                </a></strong>
+                            </td>
+                            <td>"Named type" for working with a mapping of server names to their configurations</td>
+                        </tr>
+<tr class="altColor">
+                            <td class="colOne">
                                 <strong><a href="SlingSupport.html" title="class in com/twcable/gradle/sling">
                                     SlingSupport
                                 </a></strong>
                             </td>
-                            <td>This provides methods to easily use the HTTP interface to Sling to work with the JCR.</td>
-                        </tr>
-<tr class="altColor">
-                            <td class="colOne">
-                                <strong><a href="SlingSupport.MkCol.html" title="class in com/twcable/gradle/sling">
-                                    SlingSupport.MkCol
-                                </a></strong>
-                            </td>
-                            <td></td>
+                            <td>This provides methods to easily use the HTTP interface to Sling against a specific server.</td>
                         </tr>
 
                     </tbody>
