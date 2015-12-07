@@ -15,10 +15,7 @@
  */
 package com.twcable.gradle.sling.osgi
 
-import com.twcable.gradle.http.SimpleHttpClient
 import com.twcable.gradle.sling.SlingServerConfiguration
-import com.twcable.gradle.sling.SlingServersConfiguration
-import com.twcable.gradle.sling.SlingSupport
 import groovy.transform.TypeChecked
 import groovy.util.logging.Slf4j
 import org.gradle.api.Project
@@ -40,60 +37,33 @@ class SlingBundleConfiguration {
      */
     public static final String NAME = 'bundle'
 
-    String name
-    private String _symbolicName
-    private String _installPath
-    private File _sourceFile
-    private Number _felixId
+    /**
+     * The path to install the bundle under if none is explicitly provided
+     */
+    public static final String DEFAULT_INSTALL_PATH = '/apps/install'
 
+    String name
+
+    private String _symbolicName
+
+    // TODO: Guard against trailing slash
+    String installPath = DEFAULT_INSTALL_PATH
+
+    private File _sourceFile
+
+    @SuppressWarnings("GrFinalVariableAccess")
     final Project project
 
-
-    SlingBundleConfiguration(Project project) {
+    // TODO: Remove the Project dependency
+    SlingBundleConfiguration(@Nonnull Project project) {
+        if (project == null) throw new IllegalArgumentException("project == null")
         this.project = project
     }
 
 
-    SlingServersConfiguration getSlingServers() {
-        SlingServersConfiguration slingServers = project.extensions.findByType(SlingServersConfiguration)
-        if (slingServers == null) {
-            slingServers = (SlingServersConfiguration)project.extensions.create(SlingServersConfiguration.NAME, SlingServersConfiguration)
-        }
-        return slingServers
-    }
-
-
-    void setInstallPath(String path) {
-        _installPath = path
-    }
-
-
-    @Nonnull
-    String getInstallPath() {
-        def defaultAuthorInstallPath = slingServers['author']?.installPath
-        return getInstallPathForServerName(defaultAuthorInstallPath)
-    }
-
-
-    @Nonnull
-    String getInstallPathForServer(String serverConfigInstallPath) {
-        if (_installPath == null) {
-            if (serverConfigInstallPath == null) {
-                return '/apps/install'
-            }
-            else {
-                return serverConfigInstallPath
-            }
-        }
-        else {
-            return _installPath
-        }
-    }
-
-
-    @Nonnull
-    String getInstallPathForServerName(String serverConfigInstallPath) {
-        return getInstallPathForServer(serverConfigInstallPath)
+    @Override
+    String toString() {
+        return "SlingBundleConfiguration(${symbolicName} for project ${project.path})"
     }
 
 
@@ -101,12 +71,16 @@ class SlingBundleConfiguration {
         _sourceFile = file
     }
 
-
+    /**
+     * Returns the local File for the bundle. If not explicitly set, it defaults to the 'archivePath' of
+     * the 'jar' task.
+     */
     @Nonnull
     File getSourceFile() {
         if (_sourceFile == null) {
             if (project.tasks.findByName('jar') == null) throw new IllegalStateException("There is not a 'jar' task for ${project}")
-            _sourceFile = (project.tasks.getByName('jar') as AbstractArchiveTask).archivePath
+            // don't cache this lookup in case task's path changes later in the lifecycle
+            return (project.tasks.getByName('jar') as AbstractArchiveTask).archivePath
         }
         return _sourceFile
     }
@@ -116,79 +90,60 @@ class SlingBundleConfiguration {
         this._symbolicName = symbolicName
     }
 
-
+    /**
+     * Returns the bundle's symbolic name. If not explicitly set, derives it using
+     * {@link OsgiHelper#getBundleSymbolicName(Project)}
+     */
     @Nonnull
     String getSymbolicName() {
         if (_symbolicName == null) {
-            OsgiHelper osgiHelper = new OsgiHelper()
+            def osgiHelper = new OsgiHelper()
             _symbolicName = osgiHelper.getBundleSymbolicName(project)
         }
-        _symbolicName
+        return _symbolicName
     }
 
 
-    Number getFelixId() {
-        return _felixId
-    }
-
-
-    void setFelixId(Number id) {
-        _felixId = id
+    @Nonnull
+    String getBundlePath() {
+        return "${installPath}/${sourceFile.name}"
     }
 
     /**
-     * The URI of the bundle JAR
+     * The bundle control URI using the server configuration
      */
     @Nonnull
-    URI getBundleUri(URI baseUri, String installPath) {
-        new URI(baseUri.scheme, baseUri.userInfo, baseUri.host, baseUri.port,
-            "${baseUri.path}${getBundlePath(installPath)}", null, null).normalize()
+    URI getBundleUrl(@Nonnull BundleServerConfiguration bundleServerConfiguration) {
+        if (bundleServerConfiguration == null) throw new IllegalArgumentException("bundleServerConfiguration == null")
+        return getTheBundleUrl(symbolicName, bundleServerConfiguration)
     }
 
-
+    /**
+     * The bundle control URI using the server configuration
+     */
     @Nonnull
-    String getBundlePath(String installPath) {
-        "${getInstallPathForServer(installPath)}/${sourceFile.name}"
+    static URI getTheBundleUrl(String symbolicName, BundleServerConfiguration bundleServerConfiguration) {
+        def baseUri = bundleServerConfiguration.bundleControlBaseUri
+        return new URI(baseUri.scheme, baseUri.userInfo, baseUri.host,
+            baseUri.port, "${baseUri.path}/${symbolicName}.json", null, null).normalize()
     }
 
-
+    /**
+     * The bundle installation URI using the server configuration (the parent path, not including the file name)
+     */
     @Nonnull
-    URI getBundleControlUrl(SimpleHttpClient httpClient, URI bundleControlUriBase, SlingSupport slingSupport) {
-        final URI base = bundleControlUriBase
-        if (felixId == null) {
-            felixId = slingSupport.getIdForSymbolicName(symbolicName, httpClient)
-            if (felixId == null) {
-                log.warn("Could not find id for ${symbolicName}")
-                return null
-            }
-        }
-        new URI(base.scheme, base.userInfo, base.host, base.port, "${base.path}/${felixId}.json", null, null).normalize()
+    URI getBundleInstallUrl(@Nonnull SlingServerConfiguration serverConfiguration) {
+        return getTheBundleInstallUrl(installPath, serverConfiguration)
     }
 
-
+    /**
+     * The bundle installation URI using the server configuration (the parent path, not including the file name)
+     */
     @Nonnull
-    URI getBundleControlUrl(@Nonnull String serverName) {
-        def serverConfiguration = slingServers[serverName]
-        if (serverConfiguration == null) throw new IllegalArgumentException("Server \"${serverName}\" is unknown in ${slingServers.collect { SlingServerConfiguration conf -> conf.name }}")
-        getBundleControlUrl(null, serverConfiguration.bundleControlBaseUri, serverConfiguration.slingSupport)
-    }
-
-
-    @Nonnull
-    URI getBundleInformationUrl(SimpleHttpClient httpClient, SlingSupport slingSupport, URI bundleControlUri) {
-        getBundleControlUrl(httpClient, bundleControlUri, slingSupport)
-    }
-
-
-    @Nonnull
-    URI getBundleInformationUrl(SlingSupport slingSupport, URI uri) {
-        getBundleInformationUrl(null, slingSupport, uri)
-    }
-
-
-    @Nonnull
-    URI getBundleInformationUrl(@Nonnull String serverName) {
-        getBundleControlUrl(serverName)
+    static URI getTheBundleInstallUrl(String installPath, SlingServerConfiguration serverConfiguration) {
+        def baseUri = serverConfiguration.getBaseUri()
+        return new URI(baseUri.scheme, baseUri.userInfo, baseUri.host,
+            baseUri.port, "${baseUri.path}/${installPath}", null, null).normalize()
     }
 
 }

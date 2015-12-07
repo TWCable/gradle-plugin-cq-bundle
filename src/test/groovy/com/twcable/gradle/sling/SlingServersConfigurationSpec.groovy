@@ -15,26 +15,22 @@
  */
 package com.twcable.gradle.sling
 
-import spock.lang.Specification
+import nebula.test.ProjectSpec
+import org.gradle.api.internal.ExtensibleDynamicObject
+import org.gradle.api.internal.project.DefaultProject
 import spock.lang.Subject
 
 @Subject(SlingServersConfiguration)
-class SlingServersConfigurationSpec extends Specification {
+class SlingServersConfigurationSpec extends ProjectSpec {
 
     def setup() {
         clearProperties()
     }
 
 
-    public void clearProperties() {
-        System.clearProperty("envJson");
-        System.clearProperty("environment");
-    }
-
-
     def "has expected servers as properties"() {
         given:
-        SlingServersConfiguration servers = new SlingServersConfiguration()
+        SlingServersConfiguration servers = new SlingServersConfiguration(project)
 
         expect:
         servers.author
@@ -42,9 +38,43 @@ class SlingServersConfigurationSpec extends Specification {
     }
 
 
+    def "set server configurations based on project properties"() {
+        given:
+        addPropertiesToProject([
+            "slingserver.author.port"        : 4302,
+            "slingserver.author1.port"       : "4702", // check type-coercion
+            "slingserver.author1.machineName": "testing"
+        ])
+
+        def envVars = [
+            SLINGSERVER_PUBLISHER_PROTOCOL: 'https',
+            SLINGSERVER_ENV_RETRY_MS      : '756',
+            SLINGSERVER_AUTHOR_RETRY_MS   : '456',
+            SLINGSERVER_AUTHOR_MAX_MS     : '34567',
+            SLINGSERVER_AUTHOR_PORT       : '4444', // should not be used since proj prop will override
+        ]
+
+        when:
+        def serversConf = new SlingServersConfiguration(project, envVars)
+
+        then:
+        serversConf.servers.collect { it.key } as Set == ['author', 'author1', 'publisher'] as Set
+        serversConf.author.port == 4302
+        serversConf.author.machineName == "localhost"
+        serversConf.author.retryWaitMs == 456
+        serversConf.author.maxWaitMs == 34_567
+        serversConf.author.active == true
+        serversConf.author1.port == 4702
+        serversConf.author1.machineName == "testing"
+        serversConf.author1.retryWaitMs == 756 // set by "env" namespace
+        serversConf.author1.maxWaitMs == 10_000 // default
+        serversConf.publisher.protocol == "https"
+    }
+
+
     def "has expected servers as key lookup"() {
         given:
-        SlingServersConfiguration servers = new SlingServersConfiguration()
+        SlingServersConfiguration servers = new SlingServersConfiguration(project)
 
         expect:
         servers['author']
@@ -54,10 +84,28 @@ class SlingServersConfigurationSpec extends Specification {
 
     def "can iterate over expected servers"() {
         given:
-        SlingServersConfiguration servers = new SlingServersConfiguration()
+        SlingServersConfiguration servers = new SlingServersConfiguration(project)
 
         expect:
         servers.collect { it.name }.containsAll(['author', 'publisher'])
+    }
+
+    // **********************************************************************
+    //
+    // HELPER METHODS
+    //
+    // **********************************************************************
+
+
+    public void clearProperties() {
+        System.clearProperty("envJson");
+        System.clearProperty("environment");
+    }
+
+
+    void addPropertiesToProject(Map propertiesToAdd) {
+        DefaultProject p = (DefaultProject)project
+        ((ExtensibleDynamicObject)p.asDynamicObject).addProperties(propertiesToAdd)
     }
 
 }
