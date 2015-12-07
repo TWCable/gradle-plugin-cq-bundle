@@ -15,27 +15,32 @@
  */
 package com.twcable.gradle.sling
 
+import nebula.test.ProjectSpec
 import org.gradle.api.GradleException
 import org.junit.After
-import spock.lang.Specification
 import spock.lang.Subject
+
+import static com.twcable.gradle.sling.SlingServersConfiguration.ENV_FILE_SYSTEM_PROPERTY
+import static com.twcable.gradle.sling.SlingServersConfiguration.ENV_NAME_SYSTEM_PROPERTY
 
 @Subject(EnvironmentFileReader)
 @SuppressWarnings("GroovyPointlessBoolean")
-class EnvironmentFileReaderSpec extends Specification {
+class EnvironmentFileReaderSpec extends ProjectSpec {
 
     @After
     public void clearProperties() {
-        System.clearProperty("envJson");
-        System.clearProperty("environment");
+        System.clearProperty(ENV_FILE_SYSTEM_PROPERTY);
+        System.clearProperty(ENV_NAME_SYSTEM_PROPERTY);
     }
 
 
-    def "can parse envJson for expected servers"() {
+    def "can parse envFile for expected servers"() {
         given:
-        System.setProperty("envJson", createEnvJsonFile().absolutePath)
-        System.setProperty("environment", "testEnv")
-        SlingServersConfiguration servers = new SlingServersConfiguration()
+        System.setProperty(ENV_FILE_SYSTEM_PROPERTY, createenvFileFile().absolutePath)
+        System.setProperty(ENV_NAME_SYSTEM_PROPERTY, "testEnv")
+        SlingServersConfiguration servers = new SlingServersConfiguration(project)
+
+        println "servers: ${servers}"
 
         expect:
         servers.collect { it.name }.sort().unique(false) == ["cq-auth01-4502",
@@ -51,11 +56,11 @@ class EnvironmentFileReaderSpec extends Specification {
     }
 
 
-    def "can parse no cluster envJson for expected servers"() {
+    def "can parse no cluster envFile for expected servers"() {
         given:
-        System.setProperty("envJson", createNoClusterEnvJsonFile().absolutePath)
-        System.setProperty("environment", "testEnv")
-        SlingServersConfiguration servers = new SlingServersConfiguration()
+        System.setProperty(ENV_FILE_SYSTEM_PROPERTY, createNoClusterenvFileFile().absolutePath)
+        System.setProperty(ENV_NAME_SYSTEM_PROPERTY, "testEnv")
+        SlingServersConfiguration servers = new SlingServersConfiguration(project)
 
         expect:
         servers.collect { it.name }.sort().unique(false) == ["cq-auth01-4502",
@@ -73,11 +78,11 @@ class EnvironmentFileReaderSpec extends Specification {
     }
 
 
-    def "can parse cluster all envJson for expected servers"() {
+    def "can parse cluster all envFile for expected servers"() {
         given:
-        System.setProperty("envJson", createClusterAllEnvJsonFile().absolutePath)
-        System.setProperty("environment", "testEnv")
-        SlingServersConfiguration servers = new SlingServersConfiguration()
+        System.setProperty(ENV_FILE_SYSTEM_PROPERTY, createClusterAllenvFileFile().absolutePath)
+        System.setProperty(ENV_NAME_SYSTEM_PROPERTY, "testEnv")
+        SlingServersConfiguration servers = new SlingServersConfiguration(project)
 
         expect:
         servers.collect { it.name }.sort().unique(false) == ["cq-auth01-4502",
@@ -91,11 +96,11 @@ class EnvironmentFileReaderSpec extends Specification {
     }
 
 
-    def "can parse cluster pubs envJson for expected servers"() {
+    def "can parse cluster pubs envFile for expected servers"() {
         given:
-        System.setProperty("envJson", createClusterPubsEnvJsonFile().absolutePath)
-        System.setProperty("environment", "testEnv")
-        SlingServersConfiguration servers = new SlingServersConfiguration()
+        System.setProperty(ENV_FILE_SYSTEM_PROPERTY, createClusterPubsEnvFile().absolutePath)
+        System.setProperty(ENV_NAME_SYSTEM_PROPERTY, "testEnv")
+        SlingServersConfiguration servers = new SlingServersConfiguration(project)
 
         expect:
         servers.collect { it.name }.sort().unique(false) == ["cq-auth01-4502",
@@ -111,11 +116,11 @@ class EnvironmentFileReaderSpec extends Specification {
     }
 
 
-    def "can parse same hostname envJson for expected servers"() {
+    def "can parse same hostname envFile for expected servers"() {
         given:
-        System.setProperty("envJson", createSameHostnameEnvJsonFile().absolutePath)
-        System.setProperty("environment", "testEnv")
-        SlingServersConfiguration servers = new SlingServersConfiguration()
+        System.setProperty(ENV_FILE_SYSTEM_PROPERTY, createSameHostnameEnvFile().absolutePath)
+        System.setProperty(ENV_NAME_SYSTEM_PROPERTY, "testEnv")
+        SlingServersConfiguration servers = new SlingServersConfiguration(project)
 
         expect:
         servers.collect { it.name }.sort().unique(false) == ["localhost-4502",
@@ -128,11 +133,11 @@ class EnvironmentFileReaderSpec extends Specification {
     }
 
 
-    def "can parse no-auth envJson for expected servers"() {
+    def "can parse no-auth envFile for expected servers"() {
         given:
-        System.setProperty("envJson", createNoAuthEnvJsonFile().absolutePath)
-        System.setProperty("environment", "testEnv")
-        SlingServersConfiguration servers = new SlingServersConfiguration()
+        System.setProperty(ENV_FILE_SYSTEM_PROPERTY, createNoAuthEnvFile().absolutePath)
+        System.setProperty(ENV_NAME_SYSTEM_PROPERTY, "testEnv")
+        SlingServersConfiguration servers = new SlingServersConfiguration(project)
 
         expect:
         servers.collect { it.name }.containsAll(["cq-pub01-4503", "cq-pub02-4503"])
@@ -145,11 +150,11 @@ class EnvironmentFileReaderSpec extends Specification {
     }
 
 
-    def "can parse no-pub envJson for expected servers"() {
+    def "can parse no-pub envFile for expected servers"() {
         given:
-        System.setProperty("envJson", createNoPubEnvJsonFile().absolutePath)
-        System.setProperty("environment", "testEnv")
-        SlingServersConfiguration servers = new SlingServersConfiguration()
+        System.setProperty(ENV_FILE_SYSTEM_PROPERTY, createNoPubEnvFile().absolutePath)
+        System.setProperty(ENV_NAME_SYSTEM_PROPERTY, "testEnv")
+        SlingServersConfiguration servers = new SlingServersConfiguration(project)
 
         expect:
         servers.collect { it.name }.containsAll(["cq-auth01-4502"])
@@ -162,13 +167,13 @@ class EnvironmentFileReaderSpec extends Specification {
 
 
     @SuppressWarnings("GroovyResultOfObjectAllocationIgnored")
-    def "can parse no-auth and no-pub envJson for expected servers"() {
+    def "can parse no-auth and no-pub envFile for expected servers"() {
         given:
-        System.setProperty("envJson", createNoAuthNoPubEnvJsonFile().absolutePath)
-        System.setProperty("environment", "testEnv")
+        System.setProperty(ENV_FILE_SYSTEM_PROPERTY, createNoAuthNoPubEnvFile().absolutePath)
+        System.setProperty(ENV_NAME_SYSTEM_PROPERTY, "testEnv")
 
         when:
-        new SlingServersConfiguration()
+        new SlingServersConfiguration(project)
 
         then:
         true // some weird compile bug makes this required
@@ -176,9 +181,9 @@ class EnvironmentFileReaderSpec extends Specification {
     }
 
 
-    static File createEnvJsonFile() {
-        File envJson = File.createTempFile('envJson', 'json')
-        envJson.write('''
+    static File createenvFileFile() {
+        File envFile = File.createTempFile('envFile', '.json')
+        envFile.write('''
             {
               "testEnv" : {
                 "authors": {
@@ -203,13 +208,13 @@ class EnvironmentFileReaderSpec extends Specification {
               }
             }
             ''')
-        return envJson
+        return envFile
     }
 
 
-    static File createNoClusterEnvJsonFile() {
-        File envJson = File.createTempFile('envJson', 'json')
-        envJson.write('''
+    static File createNoClusterenvFileFile() {
+        File envFile = File.createTempFile('envFile', '.json')
+        envFile.write('''
             {
               "testEnv" : {
                 "authors": {
@@ -234,13 +239,13 @@ class EnvironmentFileReaderSpec extends Specification {
               }
             }
             ''')
-        return envJson
+        return envFile
     }
 
 
-    static File createClusterAllEnvJsonFile() {
-        File envJson = File.createTempFile('envJson', 'json')
-        envJson.write('''
+    static File createClusterAllenvFileFile() {
+        File envFile = File.createTempFile('envFile', '.json')
+        envFile.write('''
             {
               "testEnv" : {
                 "authors": {
@@ -265,13 +270,13 @@ class EnvironmentFileReaderSpec extends Specification {
               }
             }
             ''')
-        return envJson
+        return envFile
     }
 
 
-    static File createClusterPubsEnvJsonFile() {
-        File envJson = File.createTempFile('envJson', 'json')
-        envJson.write('''
+    static File createClusterPubsEnvFile() {
+        File envFile = File.createTempFile('envFile', '.json')
+        envFile.write('''
             {
               "testEnv" : {
                 "authors": {
@@ -296,13 +301,13 @@ class EnvironmentFileReaderSpec extends Specification {
               }
             }
             ''')
-        return envJson
+        return envFile
     }
 
 
-    static File createSameHostnameEnvJsonFile() {
-        File envJson = File.createTempFile('envJson', 'json')
-        envJson.write('''
+    static File createSameHostnameEnvFile() {
+        File envFile = File.createTempFile('envFile', '.json')
+        envFile.write('''
             {
               "testEnv" : {
                 "authors": {
@@ -324,13 +329,13 @@ class EnvironmentFileReaderSpec extends Specification {
               }
             }
             ''')
-        return envJson
+        return envFile
     }
 
 
-    static File createNoPubEnvJsonFile() {
-        File envJson = File.createTempFile('envJson', 'json')
-        envJson.write('''
+    static File createNoPubEnvFile() {
+        File envFile = File.createTempFile('envFile', '.json')
+        envFile.write('''
             {
               "testEnv" : {
                 "authors": {
@@ -351,13 +356,13 @@ class EnvironmentFileReaderSpec extends Specification {
               }
             }
             ''')
-        return envJson
+        return envFile
     }
 
 
-    static File createNoAuthEnvJsonFile() {
-        File envJson = File.createTempFile('envJson', 'json')
-        envJson.write('''
+    static File createNoAuthEnvFile() {
+        File envFile = File.createTempFile('envFile', '.json')
+        envFile.write('''
             {
               "testEnv" : {
                 "publishers": {
@@ -378,13 +383,13 @@ class EnvironmentFileReaderSpec extends Specification {
               }
             }
             ''')
-        return envJson
+        return envFile
     }
 
 
-    static File createNoAuthNoPubEnvJsonFile() {
-        File envJson = File.createTempFile('envJson', 'json')
-        envJson.write('''
+    static File createNoAuthNoPubEnvFile() {
+        File envFile = File.createTempFile('envFile', '.json')
+        envFile.write('''
             {
               "testEnv" : {
                 "dispatchers": [
@@ -401,7 +406,7 @@ class EnvironmentFileReaderSpec extends Specification {
               }
             }
             ''')
-        return envJson
+        return envFile
     }
 
 }

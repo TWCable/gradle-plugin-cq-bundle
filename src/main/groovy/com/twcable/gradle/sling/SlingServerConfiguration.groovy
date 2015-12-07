@@ -31,13 +31,15 @@ import javax.annotation.Nonnull
  *     <li>machineName</li>
  *     <li>username</li>
  *     <li>password</li>
- *     <li>installPath</li>
+ *     <li>retryWaitMs</li>
+ *     <li>maxWaitMs</li>
  *     <li>active</li>
  * </ul>
  */
 @Slf4j
 @TypeChecked
 class SlingServerConfiguration {
+
     /**
      * The name to use for this server (e.g., "webcms-auth01-4502")
      */
@@ -74,40 +76,33 @@ class SlingServerConfiguration {
     String password = 'admin'
 
     /**
-     * Where to put any bundles on this server
+     * When a command fails (usually because the server is busy), how many milliseconds should
+     * we wait before trying again? Defaults to 1 second.
      */
-    @Nonnull
-    String installPath = '/apps/install'
+    long retryWaitMs = 1000
 
-    @Nonnull
-    private SlingSupport _slingSupport
+    /**
+     * When a command fails (usually because the server is busy), how many milliseconds should
+     * we wait at most before giving up? Defaults to 10 seconds.
+     */
+    long maxWaitMs = 10000
 
     private boolean _active = true
 
 
+    @Override
+    String toString() {
+        return "SlingServer(name:${name}, protocol:${protocol}, port:${port}, machineName:${machineName}, " +
+            "username:${username}, password:XXXX, retryWaitMs:${retryWaitMs}, " +
+            "maxWaitMs:${maxWaitMs} active:${active})"
+    }
+
+    /**
+     * A URI of the protocol, machine name and port
+     */
     @Nonnull
     URI getBaseUri() {
         new URI(protocol, null, machineName, port, '/', null, null)
-    }
-
-    /**
-     * Returns the SlingSupport instance to use to talk to the server.
-     *
-     * @return if it has not been set, a new instance is created
-     */
-    @Nonnull
-    SlingSupport getSlingSupport() {
-        if (_slingSupport == null) {
-            _slingSupport = new SlingSupport(this)
-        }
-        _slingSupport
-    }
-
-    /**
-     * Sets the SlingSupport instance to use to talk to the server.
-     */
-    void setSlingSupport(@Nonnull SlingSupport slingSupport) {
-        _slingSupport = slingSupport
     }
 
     /**
@@ -128,56 +123,39 @@ class SlingServerConfiguration {
     }
 
     /**
-     * Returns the base URL to control a bundle.
+     * Sets the property to the given value, doing type coercion if needed
      */
-    @Nonnull
-    URI getBundleControlBaseUri() {
-        URI base = getBaseUri()
-        new URI(base.scheme, base.userInfo, base.host, base.port, '/system/console/bundles', null, null)
+    void setTheProperty(@Nonnull final String propName, Object value) {
+        if (propName == null) throw new IllegalArgumentException("propName == null")
+
+        String realPropName = propName
+
+        // do any needed translations
+        switch (propName) {
+            case 'machinename': realPropName = 'machineName'; break
+            case 'retry.ms': realPropName = 'retryWaitMs'; break
+            case 'max.ms': realPropName = 'maxWaitMs'; break
+        }
+
+        if (!this.hasProperty(realPropName)) {
+            throw new IllegalArgumentException("\"${realPropName}\" is not a known property on ${this}")
+        }
+
+        final propertyType = this.metaClass.getMetaProperty(realPropName).type
+
+        switch (propertyType) {
+            case Integer:
+            case Integer.TYPE:
+                setProperty(realPropName, Integer.valueOf(value.toString())); break
+            case Long:
+            case Long.TYPE:
+                setProperty(realPropName, Long.valueOf(value.toString())); break
+            case Boolean:
+            case Boolean.TYPE:
+                setProperty(realPropName, Boolean.valueOf(value.toString())); break
+            default:
+                setProperty(realPropName, value)
+        }
     }
 
-    /**
-     * Returns the URL to use to do actions on a bundle.
-     */
-    @Nonnull
-    URI getBundleControlUriJson() {
-        URI base = getBundleControlBaseUri()
-        new URI(base.scheme, base.userInfo, base.host, base.port, "${base.path}.json", null, null)
-    }
-
-    /**
-     * Returns the URL to use to do actions on a CQ package.
-     */
-    @Nonnull
-    URI getPackageControlUri() {
-        URI base = getBaseUri()
-        new URI(base.scheme, base.userInfo, base.host, base.port, '/crx/packmgr/service/.json', null, null)
-    }
-
-    /**
-     * Returns the URL to list all the CQ packages.
-     */
-    @Nonnull
-    URI getPackageListUri() {
-        URI base = getBaseUri()
-        new URI(base.scheme, base.userInfo, base.host, base.port, '/crx/packmgr/list.jsp', null, null)
-    }
-
-    /**
-     * Returns the URL to upload to when installing a bundle.
-     */
-    @Nonnull
-    URI getBaseInstallUri() {
-        final URI base = baseUri
-        new URI(base.scheme, base.userInfo, base.host, base.port, "${base.path}${installPath}", null, null).normalize()
-    }
-
-    /**
-     * Returns the URL to download a CQ package.
-     */
-    @Nonnull
-    URI getDownloadUri() {
-        URI base = getBaseUri()
-        new URI(base.scheme, base.userInfo, base.host, base.port, '/crx/packmgr/download.jsp', null, null)
-    }
 }

@@ -15,13 +15,25 @@
  */
 package com.twcable.gradle.sling
 
-import com.twcable.gradle.sling.osgi.BundleState
 import groovy.json.JsonBuilder
+import groovy.transform.TypeChecked
+import jdk.nashorn.internal.ir.annotations.Immutable
 
-class SlingServerFixture extends FixtureBase {
+import static com.twcable.gradle.sling.osgi.BundleState.ACTIVE
+import static com.twcable.gradle.sling.osgi.BundleState.FRAGMENT
+import static com.twcable.gradle.sling.osgi.BundleState.INSTALLED
+import static com.twcable.gradle.sling.osgi.BundleState.RESOLVED
+
+/**
+ * Class for creating JSON responses for testing like would come from a "real" Felix webconsole servlet.
+ * <p/>
+ * Based on
+ * https://github.com/apache/felix/blob/fabc5d/webconsole/src/main/java/org/apache/felix/webconsole/internal/core/BundlesServlet.java
+ */
+@Immutable
+@TypeChecked
+class SlingServerFixture {
     private SlingServerConfiguration _slingServerConfiguration
-    String installPath = '/apps/install'
-    String name = 'testserver'
     String machineName = 'unittest'
     String protocol = 'http'
     int port = 9797
@@ -31,62 +43,42 @@ class SlingServerFixture extends FixtureBase {
     Collection<SlingBundleFixture> bundles = []
 
 
-    private SlingServerFixture() {}
-
-
-    static SlingServerFixture make(Closure closure) {
-        make(SlingServerFixture, closure)
-    }
-
-
-    void add(SlingBundleFixture bundle) {
-        bundles.add(bundle)
-    }
-
-
     SlingServerConfiguration getSlingServerConfiguration() {
         if (!_slingServerConfiguration) {
             _slingServerConfiguration = new SlingServerConfiguration(protocol: protocol, machineName: machineName, port: port, username: username, password: password)
         }
-        _slingServerConfiguration
+        return _slingServerConfiguration
     }
 
 
-    Map bundlesInformation() {
-        Collection<Map> data = bundles.collect { SlingBundleFixture bundle ->
-            [
-                category    : '',
-                symbolicName: bundle.symbolicName,
-                version     : bundle.version,
-                state       : bundle.bundleState.stateString,
-                stateRaw    : bundle.bundleState.stateRaw,
-                fragment    : false,
-                name        : bundle.bundleName,
-                id          : bundle.osgiBundleConfiguration.felixId
-
-            ]
+    Map bundlesInformation(boolean includeProperties) {
+        def data = bundles.collect { SlingBundleFixture bundle ->
+            def map = bundle.bundleData()
+            if (!includeProperties) map.remove('props')
+            return map
         }
 
-        def actCount = bundles.count { SlingBundleFixture bundle -> bundle.bundleState.stateString == BundleState.ACTIVE.stateString }
-        def fraCount = bundles.count { SlingBundleFixture bundle -> bundle.bundleState.stateString == BundleState.FRAGMENT.stateString }
-        def resCount = bundles.count { SlingBundleFixture bundle -> bundle.bundleState.stateString == BundleState.RESOLVED.stateString }
-        def insCount = bundles.count { SlingBundleFixture bundle -> bundle.bundleState.stateString == BundleState.INSTALLED.stateString }
+        def actCount = bundles.count { it.bundleState.stateString == ACTIVE.stateString }
+        def fraCount = bundles.count { it.bundleState.stateString == FRAGMENT.stateString }
+        def resCount = bundles.count { it.bundleState.stateString == RESOLVED.stateString }
+        def insCount = bundles.count { it.bundleState.stateString == INSTALLED.stateString }
 
-        [data  : data,
-         s     : [
-             bundles.size(),
-             actCount,
-             fraCount,
-             resCount,
-             insCount
-         ],
-         status: "Bundle information: ${bundles.size()} bundles in total - all 279 bundles active."
+        return [
+            data  : data,
+            s     : [
+                bundles.size(),
+                actCount,
+                fraCount,
+                resCount,
+                insCount
+            ],
+            status: "Bundle information: ${bundles.size()} bundles in total - all ${bundles.size()} bundles active."
         ]
     }
 
 
-    String bundlesInformationJson() {
-        new JsonBuilder(bundlesInformation()).toPrettyString()
+    String bundlesInformationJson(boolean includeProperties) {
+        new JsonBuilder(bundlesInformation(includeProperties)).toPrettyString()
     }
 
 

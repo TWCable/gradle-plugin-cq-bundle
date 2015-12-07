@@ -44,4 +44,24 @@ class HttpResponse {
         return "[${code}, \"${body}\"]"
     }
 
+
+    boolean equals(o) {
+        if (this.is(o)) return true
+        if (getClass() != o.class) return false
+
+        HttpResponse that = (HttpResponse)o
+
+        if (code != that.code) return false
+        if (body != that.body) return false
+
+        return true
+    }
+
+
+    int hashCode() {
+        int result
+        result = code
+        result = 31 * result + (body != null ? body.hashCode() : 0)
+        return result
+    }
 }

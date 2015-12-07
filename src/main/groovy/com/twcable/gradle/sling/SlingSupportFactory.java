@@ -13,12 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.twcable.gradle.sling.osgi
+package com.twcable.gradle.sling;
 
-import groovy.transform.TypeChecked
-import org.gradle.api.DefaultTask
+import javax.annotation.Nonnull;
 
-@TypeChecked
-class BasicBundleTask extends DefaultTask {
-    BundleAndServers bundleAndServers
+/**
+ * Factory for creating new instances of {@link SlingSupport}
+ */
+public interface SlingSupportFactory {
+    /**
+     * Creates a new instances of {@link SlingSupport}
+     *
+     * @param serverConfiguration the server to associate the SlingSupport with
+     * @return never null
+     */
+    @Nonnull
+    SlingSupport create(@Nonnull SlingServerConfiguration serverConfiguration);
 }

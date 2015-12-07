@@ -13,12 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.twcable.gradle.sling.osgi
+package com.twcable.gradle.sling.osgi;
 
-import groovy.transform.TypeChecked
-import org.gradle.api.DefaultTask
+import com.twcable.gradle.http.HttpResponse;
 
-@TypeChecked
-class BasicBundleTask extends DefaultTask {
-    BundleAndServers bundleAndServers
+interface BundleServerAction {
+    HttpResponse run(SlingBundleSupport slingBundleSupport);
 }

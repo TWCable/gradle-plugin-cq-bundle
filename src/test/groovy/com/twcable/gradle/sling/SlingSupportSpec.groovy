@@ -17,9 +17,7 @@ package com.twcable.gradle.sling
 
 import com.twcable.gradle.http.HttpResponse
 import com.twcable.gradle.http.SimpleHttpClient
-import org.apache.http.client.methods.HttpGet
 import org.apache.http.client.methods.HttpPost
-import org.apache.http.client.methods.HttpUriRequest
 import spock.lang.Specification
 import spock.lang.Subject
 
@@ -27,38 +25,24 @@ import spock.lang.Subject
 class SlingSupportSpec extends Specification {
 
     @SuppressWarnings("GroovyAssignabilityCheck")
-    SlingServerFixture sf = SlingServerFixture.make {
-        installPath '/apps/installx'
-    }
+    SlingServerFixture sf = new SlingServerFixture()
 
 
     def "make_path"() {
         given:
-        SimpleHttpClient httpClient = Mock(SimpleHttpClient) {
-            2 * execute(_ as HttpPost) >> { HttpUriRequest req -> req.URI.path == '/apps' ? new HttpResponse(200, "") : new HttpResponse(500, "") }
-            1 * execute(_ as SlingSupport.MkCol) >> { new HttpResponse(HttpURLConnection.HTTP_CREATED, '') }
+        final httpClient = Mock(SimpleHttpClient) {
+            1 * execute(_ as HttpPost) >> { new HttpResponse(201, "") }
         }
 
-        final serverConfiguration = sf.slingServerConfiguration
-        SlingSupport slingSupport = new SlingSupport(serverConfiguration)
-
-        expect:
-        slingSupport.makePath(serverConfiguration.baseInstallUri, httpClient)
-    }
-
-
-    def "populate symbolic name lookup"() {
-        final serverConfiguration = sf.slingServerConfiguration
-        SlingSupport slingSupport = new SlingSupport(serverConfiguration)
-        SimpleHttpClient httpClient = Mock(SimpleHttpClient) {
-            1 * execute(_ as HttpGet) >> { HttpUriRequest req -> new HttpResponse(200, sf.createBundlesJsonStr()) }
+        def slingSupport = new SlingSupport(sf.slingServerConfiguration) {
+            @Override
+            SimpleHttpClient createHttpClient() {
+                return httpClient
+            }
         }
 
         expect:
-        slingSupport.getIdForSymbolicName('com.test.services', httpClient)
-
-        // make sure the service only got called once
-        slingSupport.getIdForSymbolicName('com.test.services', httpClient)
+        slingSupport.makePath(URI.create("http://test/fooble"))
     }
 
 }
