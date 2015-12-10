@@ -6,12 +6,6 @@
 toc::[]
 
 
-////
-## Configuration ###
-
-////
-
-
 == Usage
 
 `apply plugin: 'com.twcable.cq-bundle'`
@@ -20,19 +14,20 @@ toc::[]
 [horizontal]
 uploadBundle::
   Uploads the bundle to the CQ server. The task will fail if the bundle fails to start.
-
-deleteBundle::
- Removes the current bundle from CQ. This task will not fail if the bundle does not exist.
+  This task will not fail if the bundle does not exist.
 
 startBundle::
-  Start the bundle on the servers.
+  Start the bundle on the servers. This task will fail if the bundle does not exist.
 
 stopBundle::
-  Stop the bundle on the servers.
+  Stop the bundle on the servers. This task will not fail if the bundle does not exist.
+
+removeBundle::
+  Uninstalls and deletes the bundle on the servers. This task will not fail if the bundle does not exist.
 
 refreshAllBundles::
   Tells CQ to refresh all the bundles. This gets added to the top-level project and generally a good idea
-  to run after any of the other tasks.
+  to run after any of the other tasks. This task will not fail if the bundle does not exist.
 
 showBundle::
   Shows a JSON representation of the information CQ has about the bundle, including its status,
@@ -48,18 +43,16 @@ By default, the plugin is initialized with the following effective configuration
 [source,groovy]
 --
 slingServers.with {
-  retryWaitMs = 1000
-  maxWaitValidateBundlesMs = 10000
   clusterAuths = false
   clusterPubs = false
-  uninstallBundlesPredicate = { false }
   author.with {
     protocol = 'http'
     port = 4502
     machineName = 'localhost'
     username = 'admin'
     password = 'admin'
-    installPath = '/apps/install'
+    retryWaitMs = 1000
+    maxWaitMs = 10000
     active = true
   }
   publisher.with {
@@ -68,22 +61,99 @@ slingServers.with {
     machineName = 'localhost'
     username = 'admin'
     password = 'admin'
-    installPath = '/apps/install'
+    retryWaitMs = 1000
+    maxWaitMs = 10000
     active = true
   }
 }
 --
 
-To change the password for the author instance, for example, in the `build.gradle` file do
-
-[source,groovy]
-slingServers.author.password = "other_password"
-
 The `active` property determines if it will try to interact with that server. If it has a problem connecting to
 the server, it is automatically set to be `false` so it does not keep trying to attach to a server that is not running.
 
-If `envJson` and `environment` properties are defined, the list of servers for this environment are extracted from
-the JSON file.  See link:../src/main/groovy/com/twcable/gradle/sling/EnvironmentFileReader.groovy[EnvironmentFileReader]
+=== Ways of Configuring SlingServers
+
+See link:../src/main/groovy/com/twcable/gradle/sling/SlingServersConfiguration.groovy[SlingServersConfiguration] for
+the most up-to-date documentation.
+
+There are four ways to configure server information, in order of specificity (i.e., later ones override prior ones):
+
+1. Configuration file
+2. Environment variables
+3. System properties (with caveats; see below)
+4. Project properties
+
+In addition, using the reserved "env" namespace allows for changing the defaults that are applied. See the
+"Env Namespace" section below.
+
+==== Configuration File
+
+If the `slingserver.env.file` and `slingserver.env.name` properties are defined, the list of servers for this
+environment are extracted from a configuration file.
+See link:../src/main/groovy/com/twcable/gradle/sling/EnvironmentFileReader.groovy[EnvironmentFileReader] for
+file format specifics.
+
+Because of the mapping between configuration methods talked about more below, those properties can also be
+defined as environment variables `SLINGSERVER_ENV_FILE` and `SLINGSERVER_ENV_NAME`, or
+as system properties `envFile` and `environment`.
+
+==== Environment Variables
+
+Environment variables provide a simple and consistent way of defining server configurations that are machine
+specific, such as developer workstations or continuous integration environments.
+
+To keep the mechanism simple and consistent, environments variables are converted to all lowercase and underscores
+are converted to periods, then then treated as a project property.
+
+For example, `SLINGSERVER_AUTHOR_PORT` becomes functionally the same as defining the project
+property `slingserver.author.port`. (Though explicitly defining the project property
+`slingserver.author.port` would override any value set by the environment variable.)
+
+There are a few property names that support simple translation to make them less awkward when used as environment
+variables. For example, `\*_MACHINENAME` (where "*" is the part leading up to the property name) becomes
+`\*.machineName` (camel-case), `*_RETRY_MS` becomes `*.retryWaitMs`,
+and `\*_MAX_MS` becomes `*.maxWaitMs`
+
+==== System Properties
+
+If `envFile` and `environment` system properties are defined, they are translated
+to `slingserver.env.file` and `slingserver.env.name` respectively.
+
+**_NOTE:_** This method only supports "envFile" and "environment" for historical reasons and is
+deprecated. It will likely be removed in a future version.
+
+==== Project Properties
+
+If project properties have been defined (typically via the `-P` command line options, but may be in
+`gradle.properties` or the like) starting with `slingserver.` then use that to override
+any System properties or values found in the environment configuration file.
+
+Any other value after the `slingserver.` other than "env" is taken to be the name of the
+configuration, which then is followed by the property to override. If there isn't a server by that name, it creates
+a "default" localhost configuration; if the name contains "auth" in it then the default port is set to 4502,
+otherwise it's assumed to be a publisher and set to 4503.<p/>
+
+For example:
+
+slingserver.author.port: 4602::
+    Changes the port of the server named "author" to be 4602
+
+slingserver.author2.machineName: test.myco.com::
+    Creates a new server configuration (assuming there isn't one defined in the environment configuration
+    file) with a port of 4502 and machineName of test.myco.com
+
+slingserver.twinkle2.machineName: test.myco.com::
+    Creates a new server configuration (assuming there isn't one defined in the environment configuration
+    file) with a port of 4503 and machineName of test.myco.com
+
+==== Env Namespace
+
+If you specify a property with a "server name" of "env" then that property is applied as the default across all
+the servers.
+
+For example, if you set the `SlINGSERVER_ENV_USERNAME` environment variable or the
+`slingserver.env.username` project property then that username value will be applied to every server
+configuration unless that property has been set for a specific server.
 
 === Convention: `bundle`
 
@@ -97,87 +167,5 @@ bundle.with {
   installPath = project.slingServers.author.installPath
   sourceFile = project.jar.archivePath
   slingServers = project.slingServers
-}
---
-
-`bundle` also has a `felixId` property that the plugin tries to determine dynamically from the server based on the
-bundle's symbolic name.
-
-== Task `createPackage`
-
-This will create the `.zip` files that encapsulates a CQ Package file. It extends the `Zip` Gradle task, adding
-special features to make it easier to work with for the specifics that CQ wants.
-
-=== Features
-
-Inclusion of bundles to install::
-  By default any OSGi bundles that are depended upon by the project will be copied into the /apps/install folder to be
-  https://sling.apache.org/documentation/bundles/jcr-installer-provider.html[automatically installed by Sling upon package installation].
-
-Variable substitution of `META-INF/vault/definition/.content.xml` and `META-INF/vault/properties.xml`::
-  The source files will be treated as templates with the Project properties passed in for substitution. Particularly
-  useful for things like `${version}`.+++<br/>+++
-  *NOTE:* There's currently a dependency for the `install` task between the project name (`project.name`) and the
-  `"name"` values in these metadata files. See issue #24.
-
-Explicit inclusion of bundles in `filter.xml`::
-  Each of the bundles installed by the package receive their own `<filter/>` line in `filter.xml` to ensure that
-  it gets cleanly removed upon package uninstallation without stepping on bundles that other packages may
-  have installed. (Done via the `addBundlesToFilterXml` task, which uses the configuration of `createPackage`.)
-
-=== Configuration
-
-[horizontal]
-bundleInstallRoot::
-  Where to install included bundles in the JCR. **Defaults to `"/apps/install"`**
-
-contentSrc::
-  The filesystem location to act as the top-level of the content to put in the package.
-  **Defaults to project.file("src/main/content")**
-
-fileExclusions::
-  Mutable list of common exclusions such as ++"**/.vlt", "**/.git/**"++, etc.
-  Generally to modify this list you would mutate this in-place.
-
-addAllBundles()::
-  All the bundles that this depends on (project and non-project) will be copied into the _bundleInstallRoot_.
-  **This is the default behavior.**
-
-addProjectBundles()::
-  Only the project-generated bundles that this depends on will be copied into
-  the _bundleInstallRoot_.
-
-addNonProjectBundles()::
-  Only the non-project generated bundles that this depends on be will copied into
-  the _bundleInstallRoot_.
-
-addNoBundles()::
-  None of the bundles that this depends on will be copied into the _bundleInstallRoot_.
-
-
-==== Example usage
-
-[source,groovy]
---
-createPackage {
-    addProjectBundles()
-}
---
-
-=== Dependency Configuration: `cq_package`
-
-`cq_package` extends the `runtime` configuration, if it exists.
-
-Example usage:
-
-[source,groovy]
---
-dependencies {
-    compile project(':project-name')
-    compile "net.tanesha:recaptcha4j:1.0.0"
-}
-
-configurations.cq_package {
-    exclude group: 'javax.servlet', module: 'servlet-api'
 }
 --
