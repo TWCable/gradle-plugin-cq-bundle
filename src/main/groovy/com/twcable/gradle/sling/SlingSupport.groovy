@@ -168,7 +168,7 @@ class SlingSupport {
 
         post.entity = entity
 
-        parts.each { log.debug "\t${it.key}: ${it.value}" }
+        log.info "POST ${url} - ${parts}"
 
         def resp = httpClient().execute(post)
         if (resp.code == HTTP_CLIENT_TIMEOUT) serverConf.active = false

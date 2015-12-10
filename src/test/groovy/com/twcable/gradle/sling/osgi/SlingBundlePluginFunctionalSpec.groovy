@@ -41,6 +41,7 @@ import static com.twcable.gradle.sling.osgi.BundleServerConfiguration.BUNDLE_CON
 import static com.twcable.gradle.sling.osgi.BundleState.ACTIVE
 import static com.twcable.gradle.sling.osgi.BundleState.INSTALLED
 import static com.twcable.gradle.sling.osgi.BundleState.RESOLVED
+import static com.twcable.gradle.sling.osgi.BundleState.UNINSTALLED
 
 @SuppressWarnings("GroovyAssignabilityCheck")
 class SlingBundlePluginFunctionalSpec extends IntegrationSpec {
@@ -74,11 +75,11 @@ class SlingBundlePluginFunctionalSpec extends IntegrationSpec {
     }
 
 
-    def "delete bundle"() {
+    def "remove bundle"() {
         getHandler.addPathResponse(bundlesInfoPath, activeBundlesJson)
         getHandler.addPathResponse(bundleControlPath, installedBundleJson)
         postHandler.addPathAndParamResponse(bundleControlPath, [action: 'stop'], "{\"fragment\":false,\"stateRaw\":${RESOLVED.stateRaw}}")
-        postHandler.addPathAndParamResponse(bundleControlPath, [action: 'uninstall'], "{\"fragment\":false,\"stateRaw\":${RESOLVED.stateRaw}}" /* TODO: What's the real response? */)
+        postHandler.addPathAndParamResponse(bundleControlPath, [action: 'uninstall'], "{\"fragment\":false,\"stateRaw\":${UNINSTALLED.stateRaw}}")
         postHandler.addPathAndParamResponse(bundlePath, [":operation": "delete"], installedBundleDeleteResponse)
 
         buildFile << """
@@ -92,7 +93,7 @@ class SlingBundlePluginFunctionalSpec extends IntegrationSpec {
             slingServers.publisher.active = false
         """.stripIndent()
 
-        def res = this.launcher("-Pslingserver.author.port=${serverPort}", "deleteBundle").run()
+        def res = this.launcher("-Pslingserver.author.port=${serverPort}", "removeBundle").run()
 
         expect:
         println res.standardOutput
@@ -109,7 +110,7 @@ class SlingBundlePluginFunctionalSpec extends IntegrationSpec {
         postHandler.addPathAndParamResponse(bundleConfig.installPath, [:], newPathResponse) // make sure path is there
         postHandler.addFileResponse(bundleConfig.installPath, uploadFileResponse)
         postHandler.addPathAndParamResponse(bundleControlPath, [action: 'stop'], "{\"fragment\":false,\"stateRaw\":${RESOLVED.stateRaw}}")
-        postHandler.addPathAndParamResponse(bundleControlPath, [action: 'uninstall'], "{\"fragment\":false,\"stateRaw\":${RESOLVED.stateRaw}}" /* TODO: What's the real response? */)
+        postHandler.addPathAndParamResponse(bundleControlPath, [action: 'uninstall'], "{\"fragment\":false,\"stateRaw\":${UNINSTALLED.stateRaw}}")
         postHandler.addPathAndParamResponse(bundlePath, [":operation": "delete"], installedBundleDeleteResponse)
 
         writeHelloWorld('com.twcable.test', projectDir)

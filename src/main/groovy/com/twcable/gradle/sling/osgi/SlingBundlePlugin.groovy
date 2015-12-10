@@ -42,8 +42,7 @@ import static java.net.HttpURLConnection.HTTP_OK
  *   <tr><td>uploadBundle</td><td>Upload the bundle to the servers</td></tr>
  *   <tr><td>startBundle</td><td>Start the bundle on the servers</td></tr>
  *   <tr><td>stopBundle</td><td>Stop the bundle on the servers</td></tr>
- *   <tr><td>uninstallBundle</td><td>Uninstalls the bundle from the servers</td></tr>
- *   <tr><td>deleteBundle</td><td>Deletes the bundle from the servers</td></tr>
+ *   <tr><td>removeBundle</td><td>Uninstalls and deletes the bundle from the servers</td></tr>
  *   <tr><td>showBundle</td><td>Output the JSON for the bundle's status</td></tr>
  *   <tr><td>refreshAllBundles</td><td>Refresh the dependencies for every bundle running on the servers</td></tr>
  * </table>
@@ -64,8 +63,7 @@ class SlingBundlePlugin implements Plugin<Project> {
         uploadBundle(project)
         startBundle(project)
         stopBundle(project)
-        uninstallBundle(project)
-        deleteBundle(project)
+        removeBundle(project)
         showBundle(project)
         Task refreshAllBundlesTask = refreshAllBundles(project)
 
@@ -119,28 +117,20 @@ class SlingBundlePlugin implements Plugin<Project> {
     }
 
 
-    private Task deleteBundle(Project project) {
-        return project.tasks.create('deleteBundle', BasicBundleTask).with {
-            description = 'Deletes the bundle in the Sling server'
-            dependsOn 'stopBundle', 'uninstallBundle'
+    private Task removeBundle(Project project) {
+        return project.tasks.create('removeBundle', BasicBundleTask).with {
+            description = 'Uninstalls and deletes the bundle from Felix'
+            dependsOn 'stopBundle'
             doLast {
                 def resp = bundleAndServers.doAcrossServers(true) { SlingBundleSupport slingBundleSupport ->
                     def bundleLocation = bundleAndServers.getBundleLocation(slingBundleSupport)
-                    bundleAndServers.removeBundle(slingBundleSupport.slingSupport, bundleLocation)
-                }
-                if (resp.code != HTTP_OK) throw new GradleException("Server response: ${resp}")
-            }
-        }
-    }
 
+                    def rc = bundleAndServers.uninstallBundle(slingBundleSupport)
 
-    private Task uninstallBundle(Project project) {
-        return project.tasks.create('uninstallBundle', BasicBundleTask).with {
-            description = 'Uninstalls the bundle from Felix'
-            mustRunAfter 'stopBundle'
-            doLast {
-                def resp = bundleAndServers.doAcrossServers(true) { SlingBundleSupport slingBundleSupport ->
-                    bundleAndServers.uninstallBundle(slingBundleSupport)
+                    if (rc.code == HTTP_OK && bundleLocation != null)
+                        return bundleAndServers.removeBundle(slingBundleSupport.slingSupport, bundleLocation)
+                    else
+                        return rc
                 }
                 if (resp.code != HTTP_OK) throw new GradleException("Server response: ${resp}")
             }
@@ -177,7 +167,7 @@ class SlingBundlePlugin implements Plugin<Project> {
     private Task uploadBundle(Project project) {
         return project.tasks.create('uploadBundle', BasicBundleTask).with {
             description = 'Upload the bundle to the Sling server'
-            dependsOn 'jar', 'deleteBundle'
+            dependsOn 'jar', 'removeBundle'
             doLast {
                 def resp = bundleAndServers.doAcrossServers(true) { SlingBundleSupport slingBundleSupport ->
                     bundleAndServers.uploadBundle(slingBundleSupport)
