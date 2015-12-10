@@ -125,11 +125,12 @@ class SlingBundlePlugin implements Plugin<Project> {
                 def resp = bundleAndServers.doAcrossServers(true) { SlingBundleSupport slingBundleSupport ->
                     def bundleLocation = bundleAndServers.getBundleLocation(slingBundleSupport)
 
-                    bundleAndServers.uninstallBundle(slingBundleSupport)
+                    def rc = bundleAndServers.uninstallBundle(slingBundleSupport)
 
-                    if (bundleLocation != null) {
-                        bundleAndServers.removeBundle(slingBundleSupport.slingSupport, bundleLocation)
-                    }
+                    if (rc.code == HTTP_OK && bundleLocation != null)
+                        return bundleAndServers.removeBundle(slingBundleSupport.slingSupport, bundleLocation)
+                    else
+                        return rc
                 }
                 if (resp.code != HTTP_OK) throw new GradleException("Server response: ${resp}")
             }
