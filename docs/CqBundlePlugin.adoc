@@ -14,22 +14,20 @@ toc::[]
 [horizontal]
 uploadBundle::
   Uploads the bundle to the CQ server. The task will fail if the bundle fails to start.
-
-deleteBundle::
- Removes the current bundle from CQ. This task will not fail if the bundle does not exist.
+  This task will not fail if the bundle does not exist.
 
 startBundle::
-  Start the bundle on the servers.
+  Start the bundle on the servers. This task will fail if the bundle does not exist.
 
 stopBundle::
-  Stop the bundle on the servers.
+  Stop the bundle on the servers. This task will not fail if the bundle does not exist.
 
-uninstallBundle::
-  Uninstalls the bundle on the servers.
+removeBundle::
+  Uninstalls and deletes the bundle on the servers. This task will not fail if the bundle does not exist.
 
 refreshAllBundles::
   Tells CQ to refresh all the bundles. This gets added to the top-level project and generally a good idea
-  to run after any of the other tasks.
+  to run after any of the other tasks. This task will not fail if the bundle does not exist.
 
 showBundle::
   Shows a JSON representation of the information CQ has about the bundle, including its status,
