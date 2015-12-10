@@ -265,6 +265,11 @@ class BundleAndServers {
 
         final httpResponse = getTheSlingBundleInformation(symbolicName, slingSupport)
 
+        if (httpResponse.code == HTTP_NOT_FOUND) {
+            log.info "Could not find ${symbolicName} on ${slingSupport.serverConf.name}"
+            return null
+        }
+
         if (httpResponse.code == HTTP_OK) {
             try {
                 Map json = new JsonSlurper().parseText(httpResponse.body) as Map
