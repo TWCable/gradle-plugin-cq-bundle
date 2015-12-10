@@ -98,7 +98,7 @@ class SlingBundlePlugin implements Plugin<Project> {
         return project.tasks.create('refreshAllBundles', BasicBundleTask).with {
             description = 'Refreshes all the bundles in the Sling server'
             doLast {
-                def resp = bundleAndServers.doAcrossServers { SlingBundleSupport slingBundleSupport ->
+                def resp = bundleAndServers.doAcrossServers(true) { SlingBundleSupport slingBundleSupport ->
                     bundleAndServers.refreshOsgiPackages(slingBundleSupport.slingSupport, slingBundleSupport.bundlesControlUri)
                 }
                 if (resp.code != HTTP_OK) throw new GradleException("Server response: ${resp}")
@@ -124,7 +124,7 @@ class SlingBundlePlugin implements Plugin<Project> {
             description = 'Deletes the bundle in the Sling server'
             dependsOn 'stopBundle', 'uninstallBundle'
             doLast {
-                def resp = bundleAndServers.doAcrossServers { SlingBundleSupport slingBundleSupport ->
+                def resp = bundleAndServers.doAcrossServers(true) { SlingBundleSupport slingBundleSupport ->
                     def bundleLocation = bundleAndServers.getBundleLocation(slingBundleSupport)
                     bundleAndServers.removeBundle(slingBundleSupport.slingSupport, bundleLocation)
                 }
@@ -139,7 +139,7 @@ class SlingBundlePlugin implements Plugin<Project> {
             description = 'Uninstalls the bundle from Felix'
             mustRunAfter 'stopBundle'
             doLast {
-                def resp = bundleAndServers.doAcrossServers { SlingBundleSupport slingBundleSupport ->
+                def resp = bundleAndServers.doAcrossServers(true) { SlingBundleSupport slingBundleSupport ->
                     bundleAndServers.uninstallBundle(slingBundleSupport)
                 }
                 if (resp.code != HTTP_OK) throw new GradleException("Server response: ${resp}")
@@ -152,7 +152,7 @@ class SlingBundlePlugin implements Plugin<Project> {
         return project.tasks.create('stopBundle', BasicBundleTask).with {
             description = 'Stops bundle on the Sling server'
             doLast {
-                def resp = bundleAndServers.doAcrossServers { SlingBundleSupport slingBundleSupport ->
+                def resp = bundleAndServers.doAcrossServers(true) { SlingBundleSupport slingBundleSupport ->
                     bundleAndServers.stopBundle(slingBundleSupport)
                 }
                 if (resp.code != HTTP_OK) throw new GradleException("Server response: ${resp}")
@@ -165,7 +165,7 @@ class SlingBundlePlugin implements Plugin<Project> {
         return project.tasks.create('startBundle', BasicBundleTask).with {
             description = 'Starts the bundle in the Sling server'
             doLast {
-                def resp = bundleAndServers.doAcrossServers { SlingBundleSupport slingBundleSupport ->
+                def resp = bundleAndServers.doAcrossServers(false) { SlingBundleSupport slingBundleSupport ->
                     bundleAndServers.startBundle(slingBundleSupport)
                 }
                 if (resp.code != HTTP_OK) throw new GradleException("Server response: ${resp}")
@@ -179,7 +179,7 @@ class SlingBundlePlugin implements Plugin<Project> {
             description = 'Upload the bundle to the Sling server'
             dependsOn 'jar', 'deleteBundle'
             doLast {
-                def resp = bundleAndServers.doAcrossServers { SlingBundleSupport slingBundleSupport ->
+                def resp = bundleAndServers.doAcrossServers(true) { SlingBundleSupport slingBundleSupport ->
                     bundleAndServers.uploadBundle(slingBundleSupport)
                 }
                 if (resp.code != HTTP_OK) throw new GradleException("Server response: ${resp}")

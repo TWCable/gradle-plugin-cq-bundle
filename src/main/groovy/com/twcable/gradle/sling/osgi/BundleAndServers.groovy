@@ -40,6 +40,7 @@ import static SlingSupport.block
 import static java.net.HttpURLConnection.HTTP_BAD_METHOD
 import static java.net.HttpURLConnection.HTTP_BAD_REQUEST
 import static java.net.HttpURLConnection.HTTP_CLIENT_TIMEOUT
+import static java.net.HttpURLConnection.HTTP_NOT_FOUND
 import static java.net.HttpURLConnection.HTTP_OK
 
 /**
@@ -126,17 +127,26 @@ class BundleAndServers {
     /**
      * Runs the given server action across all the active servers
      *
+     * @param missingIsOk is a 404 response considered OK? If false, it counts as an error
+     * @param serverAction the action to run against the bundle on the server
+     *
      * @return the "aggregate" HTTP response: if all the calls are in the >= 200 and <400 range, or
      * a 408 (timeout, server not running) the returns an empty HTTP_OK; otherwise returns the first error response
      * it came across
      */
     @Nonnull
-    HttpResponse doAcrossServers(BundleServerAction serverAction) {
-        return doAcrossServers(serversConfiguration, slingBundleConfig, serverAction)
+    HttpResponse doAcrossServers(boolean missingIsOk,
+                                 BundleServerAction serverAction) {
+        return doAcrossServers(serversConfiguration, slingBundleConfig, missingIsOk, serverAction)
     }
 
     /**
      * Runs the given server action across all the provided active servers
+     *
+     * @param servers the collection of servers to run the action across
+     * @param bundleConfiguration the bundle's configuration to use for the action
+     * @param missingIsOk is a 404 response considered OK? If false, it counts as an error
+     * @param serverAction the action to run against the bundle on the server
      *
      * @return the "aggregate" HTTP response: if all the calls are in the >= 200 and <400 range, or
      * a 408 (timeout, server not running) the returns an empty HTTP_OK; otherwise returns the first error response
@@ -145,12 +155,19 @@ class BundleAndServers {
     @Nonnull
     static HttpResponse doAcrossServers(SlingServersConfiguration servers,
                                         SlingBundleConfiguration bundleConfiguration,
+                                        boolean missingIsOk,
                                         BundleServerAction serverAction) {
-        return doAcrossServers(servers, bundleConfiguration, SimpleSlingSupportFactory.INSTANCE, serverAction)
+        return doAcrossServers(servers, bundleConfiguration, SimpleSlingSupportFactory.INSTANCE, missingIsOk, serverAction)
     }
 
     /**
      * Runs the given server action across all the provided active servers
+     *
+     * @param servers the collection of servers to run the action across
+     * @param bundleConfiguration the bundle's configuration to use for the action
+     * @param slingSupportFactory the factory for creating the connection helper
+     * @param missingIsOk is a 404 response considered OK? If false, it counts as an error
+     * @param serverAction the action to run against the bundle on the server
      *
      * @return the "aggregate" HTTP response: if all the calls are in the >= 200 and <400 range, or
      * a 408 (timeout, server not running) the returns an empty HTTP_OK; otherwise returns the first error response
@@ -160,6 +177,7 @@ class BundleAndServers {
     static HttpResponse doAcrossServers(SlingServersConfiguration servers,
                                         SlingBundleConfiguration bundleConfiguration,
                                         SlingSupportFactory slingSupportFactory,
+                                        boolean missingIsOk,
                                         BundleServerAction serverAction) {
         def httpResponse = new HttpResponse(HTTP_OK, '')
 
@@ -173,7 +191,7 @@ class BundleAndServers {
                 }
 
                 // restrictive: if any call is bad, the result is bad
-                def gotBadResponse = isBadResponse(resp.code)
+                def gotBadResponse = isBadResponse(resp.code, missingIsOk)
                 if (gotBadResponse) {
                     log.info "Received a bad response from ${serverConfig.name}: ${resp}"
                     httpResponse = resp
@@ -184,7 +202,9 @@ class BundleAndServers {
     }
 
 
-    static boolean isBadResponse(int respCode) {
+    static boolean isBadResponse(int respCode, boolean missingIsOk) {
+        if (respCode == HTTP_NOT_FOUND) return !missingIsOk
+
         if (respCode >= HTTP_OK) {
             if (respCode < HTTP_BAD_REQUEST) return false
             if (respCode == HTTP_CLIENT_TIMEOUT) return false

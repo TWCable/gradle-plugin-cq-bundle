@@ -33,6 +33,7 @@ import static com.twcable.gradle.sling.osgi.BundleState.INSTALLED
 import static com.twcable.gradle.sling.osgi.BundleState.RESOLVED
 import static java.net.HttpURLConnection.HTTP_CLIENT_TIMEOUT
 import static java.net.HttpURLConnection.HTTP_INTERNAL_ERROR
+import static java.net.HttpURLConnection.HTTP_NOT_FOUND
 import static java.net.HttpURLConnection.HTTP_OK
 
 @SuppressWarnings(["GroovyAssignabilityCheck", "GroovyPointlessArithmetic", "GroovyUntypedAccess", "GroovyPointlessBoolean"])
@@ -127,7 +128,7 @@ class BundleAndServersSpec extends ProjectSpec {
         }
 
         when:
-        def resp = BundleAndServers.doAcrossServers(serversConfiguration, bundleConfiguration, slingSupportFactory) {}
+        def resp = BundleAndServers.doAcrossServers(serversConfiguration, bundleConfiguration, slingSupportFactory, false) {}
 
         then:
         resp == new HttpResponse(HTTP_OK, '')
@@ -146,10 +147,48 @@ class BundleAndServersSpec extends ProjectSpec {
         }
 
         when:
-        def resp = BundleAndServers.doAcrossServers(serversConfiguration, bundleConfiguration, slingSupportFactory) {}
+        def resp = BundleAndServers.doAcrossServers(serversConfiguration, bundleConfiguration, slingSupportFactory, false) {}
 
         then:
         resp == new HttpResponse(HTTP_INTERNAL_ERROR, 'Boom')
+    }
+
+
+    def "doAcrossServers missing bundle when missing is not OK"() {
+        def slingSupportFactory = { SlingServerConfiguration sc ->
+            def ss = Mock(SlingSupport)
+            ss.serverConf >> sc
+            if (sc.name == 'author')
+                ss.doHttp(_) >> new HttpResponse(HTTP_OK, '')
+            else
+                ss.doHttp(_) >> new HttpResponse(HTTP_NOT_FOUND, 'Missing')
+            return ss
+        }
+
+        when:
+        def resp = BundleAndServers.doAcrossServers(serversConfiguration, bundleConfiguration, slingSupportFactory, false) {}
+
+        then:
+        resp == new HttpResponse(HTTP_NOT_FOUND, 'Missing')
+    }
+
+
+    def "doAcrossServers missing bundle when missing is OK"() {
+        def slingSupportFactory = { SlingServerConfiguration sc ->
+            def ss = Mock(SlingSupport)
+            ss.serverConf >> sc
+            if (sc.name == 'author')
+                ss.doHttp(_) >> new HttpResponse(HTTP_OK, '')
+            else
+                ss.doHttp(_) >> new HttpResponse(HTTP_NOT_FOUND, 'Missing')
+            return ss
+        }
+
+        when:
+        def resp = BundleAndServers.doAcrossServers(serversConfiguration, bundleConfiguration, slingSupportFactory, true) {}
+
+        then:
+        resp == new HttpResponse(HTTP_OK, '')
     }
 
 
