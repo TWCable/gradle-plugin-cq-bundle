@@ -17,6 +17,6 @@ package com.twcable.gradle.sling.osgi;
 
 import com.twcable.gradle.http.HttpResponse;
 
-interface BundleServerAction {
+public interface BundleServerAction {
     HttpResponse run(SlingBundleSupport slingBundleSupport);
 }
