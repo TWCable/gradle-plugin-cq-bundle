@@ -18,26 +18,18 @@ package com.twcable.gradle.sling.osgi
 import com.twcable.gradle.http.HttpResponse
 import com.twcable.gradle.http.SimpleHttpClient
 import com.twcable.gradle.sling.SimpleSlingSupportFactory
-import com.twcable.gradle.sling.SlingServerConfiguration
 import com.twcable.gradle.sling.SlingServersConfiguration
 import com.twcable.gradle.sling.SlingSupport
 import com.twcable.gradle.sling.SlingSupportFactory
 import groovy.json.JsonSlurper
 import groovy.transform.TypeChecked
 import groovy.util.logging.Slf4j
-import org.apache.http.entity.mime.content.FileBody
 import org.gradle.api.GradleException
 
 import javax.annotation.Nonnull
 import javax.annotation.Nullable
 
-import static BundleState.ACTIVE
-import static BundleState.FRAGMENT
-import static BundleState.INSTALLED
-import static BundleState.MISSING
 import static BundleState.RESOLVED
-import static SlingSupport.block
-import static java.net.HttpURLConnection.HTTP_BAD_METHOD
 import static java.net.HttpURLConnection.HTTP_BAD_REQUEST
 import static java.net.HttpURLConnection.HTTP_CLIENT_TIMEOUT
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND
@@ -76,22 +68,9 @@ class BundleAndServers {
 
 
     @Nonnull
-    HttpResponse stopBundle(@Nonnull SlingBundleSupport slingSupport) {
-        final url = slingBundleConfig.getBundleUrl(slingSupport.bundleServerConfiguration)
-        return slingSupport.doPost(url, ['action': 'stop'])
-    }
-
-
-    @Nonnull
-    HttpResponse startBundle(@Nonnull SlingBundleSupport slingSupport) {
-        final url = slingBundleConfig.getBundleUrl(slingSupport.bundleServerConfiguration)
-        return slingSupport.doPost(url, ['action': 'start'])
-    }
-
-
-    @Nonnull
-    void startInactiveBundles(@Nonnull SlingBundleSupport slingBundleSupport) {
-        def resp = slingBundleSupport.doGet(slingBundleSupport.bundlesControlUri)
+    static void startInactiveBundles(@Nonnull SlingSupport slingSupport) {
+        def bundleServerConf = new BundleServerConfiguration(slingSupport.serverConf)
+        def resp = slingSupport.doGet(bundleServerConf.bundlesControlUri)
 
         if (resp.code == HTTP_OK) {
             Map json = new JsonSlurper().parseText(resp.body) as Map
@@ -99,29 +78,14 @@ class BundleAndServers {
 
             def inactiveTwcBundles = data.findAll {
                 it.state == RESOLVED.stateString
-            }.collect { [it.id, it.symbolicName] }
+            }.collect { it.symbolicName } as List<String>
 
-            inactiveTwcBundles.each { id, symbolicName ->
-                URI url = new URI("${slingBundleSupport.bundleControlBaseUri}/${id}.json")
-
-                slingBundleSupport.doPost(url, ['action': 'start'])
-                log.info "Trying to start inactive bundle: ${id}:${symbolicName}"
+            inactiveTwcBundles.each { String symbolicName ->
+                def slingBundleSupport = new SlingBundleSupport(new SlingBundleConfiguration(symbolicName, ""), bundleServerConf, slingSupport)
+                log.info "Trying to start inactive bundle: ${symbolicName}"
+                slingBundleSupport.startBundle()
             }
         }
-    }
-
-
-    @Nonnull
-    HttpResponse refreshBundle(@Nonnull SlingBundleSupport slingSupport) {
-        final url = slingBundleConfig.getBundleUrl(slingSupport.bundleServerConfiguration)
-        return slingSupport.doPost(url, ['action': 'refresh'])
-    }
-
-
-    @Nonnull
-    HttpResponse updateBundle(@Nonnull SlingBundleSupport slingSupport) {
-        final url = slingBundleConfig.getBundleUrl(slingSupport.bundleServerConfiguration)
-        return slingSupport.doPost(url, ['action': 'update'])
     }
 
     /**
@@ -191,7 +155,7 @@ class BundleAndServers {
                 }
 
                 // restrictive: if any call is bad, the result is bad
-                def gotBadResponse = isBadResponse(resp.code, missingIsOk)
+                def gotBadResponse = resp == null || isBadResponse(resp.code, missingIsOk)
                 if (gotBadResponse) {
                     log.info "Received a bad response from ${serverConfig.name}: ${resp}"
                     httpResponse = resp
@@ -310,269 +274,7 @@ class BundleAndServers {
 
     @Nonnull
     static HttpResponse refreshOsgiPackages(@Nonnull SlingSupport slingSupport, @Nonnull URI bundleControlUri) {
-        return slingSupport.doPost(bundleControlUri, ['action': 'refreshPackages'])
-    }
-
-
-    @Nonnull
-    HttpResponse uninstallBundle(@Nonnull SlingBundleSupport slingSupport) {
-        final url = slingBundleConfig.getBundleUrl(slingSupport.bundleServerConfiguration)
-        return slingSupport.doPost(url, ['action': 'uninstall'])
-    }
-
-
-    @Nonnull
-    HttpResponse removeBundle(SlingSupport slingSupport, URI bundleLocation) {
-        return slingSupport.doPost(bundleLocation, [':operation': 'delete'])
-    }
-
-
-    @Nonnull
-    HttpResponse uploadBundle(@Nonnull SlingBundleSupport slingSupport) {
-        def serverConfiguration = slingSupport.serverConf
-        if (!serverConfiguration.active) throw new IllegalArgumentException("serverConfiguration ${serverConfiguration.name} is not active")
-
-        final installUri = slingBundleConfig.getBundleInstallUrl(serverConfiguration)
-        final sourceFile = slingBundleConfig.sourceFile
-
-        if (slingSupport.slingSupport.makePath(installUri)) {
-            String filename = sourceFile.name
-            log.info("Uploading ${filename} to ${installUri}")
-            def resp = slingSupport.doPost(installUri, [
-                (filename): new FileBody(sourceFile, 'application/java-archive'),
-            ])
-            log.info("Finished upload of ${filename} to ${installUri}")
-            return resp
-        }
-        else {
-            return new HttpResponse(HTTP_BAD_METHOD, 'Could not create area to put file in')
-        }
-    }
-
-
-    void validateAllBundles(@Nonnull List<String> symbolicNames, @Nonnull SlingBundleSupport slingBundleSupport) {
-        def serverConf = slingBundleSupport.serverConf
-        def serverName = serverConf.name
-        log.info "Checking for NON-ACTIVE bundles on ${serverName}"
-
-        final pollingTxt = new DotPrinter()
-        boolean bundlesActive = false
-
-        block(
-            serverConf.maxWaitMs,
-            { serverConf.active && bundlesActive == false },
-            {
-                log.info pollingTxt.increment()
-
-                def resp = slingBundleSupport.doGet(slingBundleSupport.bundlesControlUri)
-                if (resp.code == HTTP_OK) {
-                    try {
-                        def json = new JsonSlurper().parseText(resp.body) as Map
-                        List<Map<String, Object>> data = json.data as List
-
-                        def knownBundles = data.findAll { Map b -> symbolicNames.contains(b.symbolicName) }
-                        def knownBundleNames = knownBundles.collect { Map b -> (String)b.symbolicName }
-                        def missingBundleNames = (symbolicNames - knownBundleNames)
-                        def missingBundles = missingBundleNames.collect { String name ->
-                            [symbolicName: name, state: MISSING.stateString] as Map<String, Object>
-                        }
-                        def allBundles = knownBundles + missingBundles
-
-                        if (!hasAnInactiveBundle(allBundles)) {
-                            if (log.debugEnabled) allBundles.each { Map b -> log.debug "Active bundle: ${b.symbolicName}" }
-                            bundlesActive = true
-                        }
-                    }
-                    catch (Exception exp) {
-                        throw new GradleException("Problem parsing \"${resp.body}\"", exp)
-                    }
-                }
-                else {
-                    if (resp.code == HTTP_CLIENT_TIMEOUT)
-                        serverConf.active = false
-                    else
-                        throw new GradleException("Could not get bundle data. ${resp.code}: ${resp.body}")
-                }
-            },
-            serverConf.retryWaitMs
-        )
-
-        if (serverConf.active == false) return
-
-        if (bundlesActive == false)
-            throw new GradleException("Not all bundles for ${symbolicNames} are ACTIVE on ${serverName}")
-        else
-            log.info("Bundles are ACTIVE on ${serverName}")
-    }
-
-    /**
-     * If any of the bundles in the given parsed status JSON are inactive and their symbolic name contains
-     * "groupProperty", then returns false; otherwise returns true
-     * @param json the parsed JSON for the status of all bundles JSON
-     * @param groupProperty the part of the symbolic name to look for (e.g., "com.myco")
-     */
-    @SuppressWarnings("GroovyTrivialIf")
-    private static boolean areAllBundlesActive(Map json, String groupProperty) {
-        // Reading Json response for bundle status
-        // The status response is an array like "s": [ 84, 81, 3, 0, 0 ],
-        // Status number described as: [bundles existing, active, fragment, resolved, installed]
-        // Ref Url: http://felix.apache.org/documentation/subprojects/apache-felix-web-console/web-console-restful-api.html
-
-        def statuses = json.s as List
-        def resolved = statuses[3] as Integer
-        def installed = statuses[4] as Integer
-
-        if (resolved == 0 && installed == 0) {
-            log.debug "There are no bundles in the \"resolved\" or \"installed\" state"
-            return true
-        }
-
-        List<Map> data = json.data as List
-
-        def inactiveBundles = inactiveBudles(data).collect { it.symbolicName } as List<String>
-
-        if (log.infoEnabled) inactiveBundles.each { log.info "Inactive bundle: ${it}" }
-
-        if (inactiveBundles.isEmpty() || !inactiveBundles.any { it.contains(groupProperty) })
-            return true
-        else
-            return false
-    }
-
-
-    private static Collection<Map> inactiveBudles(Collection<Map> knownBundles) {
-        return knownBundles.findAll { bundle ->
-            bundle.state == INSTALLED.stateString ||
-                bundle.state == RESOLVED.stateString ||
-                bundle.state == MISSING.stateString
-        } as Collection<Map>
-    }
-
-
-    private boolean hasAnInactiveBundle(final Collection<Map<String, Object>> knownBundles) {
-        final activeBundles = knownBundles.findAll { bundle ->
-            bundle.state == ACTIVE.stateString ||
-                bundle.state == FRAGMENT.stateString
-        } as Collection<Map>
-
-        final inactiveBundles = inactiveBudles(knownBundles)
-
-        if (log.infoEnabled) inactiveBundles.each { log.info("bundle ${it.symbolicName} NOT active: ${it.state}") }
-        if (log.debugEnabled) activeBundles.each { log.debug("bundle ${it.symbolicName} IS active") }
-
-        inactiveBundles.size() > 0
-    }
-
-    /**
-     * Given a list of symbolic names on a server, uninstalls them if they match the predicate
-     *
-     * @param symbolicNames the symbolic names on a server to check against
-     * @param slingSupport the SlingSupport for a particular server
-     * @param predicate the predicate determine if the bundle should be uninstalled
-     */
-    // TODO: This is used by the cq-package plugin; should probably be moved as a task into this plugin
-    void uninstallAllBundles(@Nonnull List<String> symbolicNames,
-                             @Nonnull SlingBundleSupport slingSupport,
-                             @Nullable UninstallBundlePredicate predicate) {
-        log.info "Uninstalling/removing bundles on ${slingSupport.serverConf.name}: ${symbolicNames}"
-
-        symbolicNames.each { String symbolicName ->
-            if (predicate != null && predicate.eval(symbolicName)) {
-                log.info "Stopping $symbolicName on ${slingSupport.serverConf.name}"
-                stopBundle(slingSupport)
-                log.info "Uninstalling $symbolicName on ${slingSupport.serverConf.name}"
-                uninstallBundle(slingSupport)
-            }
-        }
-    }
-
-    /**
-     * If any of the bundles on the server pointed to by "slingBundleSupport" are inactive and their symbolic name contains
-     * "groupProperty", then throws a {@link GradleException}; otherwise simply returns.
-     * <p/>
-     * It will poll the server every {@link SlingServerConfiguration#getRetryWaitMs() retryWaitMs} up
-     * to {@link SlingServerConfiguration # # getMaxWaitMs ( ) maxWaitMs} to
-     * see if the state has changed to be ACTIVE before throwing an exception.
-     *
-     * @param groupProperty the part of the symbolic name to look for (e.g., "com.myco")
-     * @param slingBundleSupport the server and connection to check
-     *
-     * @throws GradleException after polling, the bundles still are not ACTIVE
-     */
-    // TODO: This is used by the cq-package plugin; should probably be moved as a task into this plugin
-    void checkActiveBundles(String groupProperty, SlingBundleSupport slingBundleSupport) throws GradleException {
-        def serverConf = slingBundleSupport.serverConf
-
-        def serverName = serverConf.name
-        def bundleControlUriJson = slingBundleSupport.bundlesControlUri
-
-        log.info "Checking for bundles status as Active on ${serverName} for ${groupProperty}"
-
-        final pollingTxt = new DotPrinter()
-        boolean bundlesActive = false
-
-        block(
-            serverConf.maxWaitMs,
-            { serverConf.active && bundlesActive == false },
-            {
-                log.info pollingTxt.increment()
-
-                def resp = slingBundleSupport.doGet(bundleControlUriJson)
-                if (resp.code == HTTP_OK) {
-                    try {
-                        def json = new JsonSlurper().parseText(resp.body) as Map
-
-                        if (areAllBundlesActive(json, groupProperty)) {
-                            bundlesActive = true
-                        }
-                    }
-                    catch (Exception exp) {
-                        throw new GradleException("Could not parse \"${resp.body}\"", exp)
-                    }
-                }
-                else if (resp.code == HTTP_CLIENT_TIMEOUT) {
-                    serverConf.active = false
-                }
-            },
-            serverConf.retryWaitMs
-        )
-
-        if (serverConf.active) {
-            if (bundlesActive == false)
-                throw new GradleException("Check Bundle Status FAILED: Not all bundles are ACTIVE on ${serverName}")
-            else
-                log.info("Bundles are ACTIVE on ${serverName}!")
-        }
-        else {
-            // ignore since the server's not active
-        }
-    }
-
-    // **********************************************************************
-    //
-    // HELPER CLASSES
-    //
-    // **********************************************************************
-
-
-    @TypeChecked
-    static class DotPrinter {
-        private final StringBuilder str = new StringBuilder()
-
-
-        String increment() {
-            str.append('.' as char).toString()
-        }
-    }
-
-    /**
-     * Functional interface for {@link #uninstallAllBundles(List, SlingBundleSupport, UninstallBundlePredicate)}
-     */
-    static interface UninstallBundlePredicate {
-        /**
-         * Returns true if the symbolic name passed in should be uninstalled; otherwise false
-         */
-        boolean eval(String symbolicName)
+        return SlingBundleSupport.refreshOsgiPackages(slingSupport, bundleControlUri)
     }
 
 }

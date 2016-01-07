@@ -66,7 +66,7 @@ class SlingBundlePluginFunctionalSpec extends IntegrationSpec {
         fixtureProject = ProjectBuilder.builder().build()
         fixtureProject.plugins.apply JavaPlugin
 
-        bundleConfig = fixtureProject.extensions.create(SlingBundleConfiguration.NAME, SlingBundleConfiguration, fixtureProject)
+        bundleConfig = fixtureProject.extensions.create(SlingProjectBundleConfiguration.NAME, SlingProjectBundleConfiguration, fixtureProject)
         bundleConfig.symbolicName = 'com.test.bundle'
         bundleConfig.installPath = '/apps/test/install'
         bundleConfig.sourceFile = new File(projectDir, "build/libs/${moduleName}-${projVersion}.jar")

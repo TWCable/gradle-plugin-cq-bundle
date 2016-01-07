@@ -20,12 +20,17 @@ import com.twcable.gradle.sling.SlingServerConfiguration
 import com.twcable.gradle.sling.SlingSupport
 import com.twcable.gradle.sling.SlingSupportFactory
 import groovy.transform.TypeChecked
+import groovy.util.logging.Slf4j
+import org.apache.http.entity.mime.content.FileBody
 
 import javax.annotation.Nonnull
+
+import static java.net.HttpURLConnection.HTTP_BAD_METHOD
 
 /**
  * Brings together a {@link SlingBundleConfiguration}, {@link BundleServerConfiguration} and {@link SlingSupport}
  */
+@Slf4j
 @TypeChecked
 @SuppressWarnings("GrFinalVariableAccess")
 class SlingBundleSupport {
@@ -33,7 +38,7 @@ class SlingBundleSupport {
     final BundleServerConfiguration bundleServerConfiguration
     final SlingSupport slingSupport
 
-
+    // TODO: SlingSupport contains a SlingServerConfiguration, which can be used to create a BundleServerConfiguration
     SlingBundleSupport(SlingBundleConfiguration bundleConfiguration,
                        BundleServerConfiguration bundleServerConfiguration,
                        SlingSupport slingSupport) {
@@ -81,21 +86,77 @@ class SlingBundleSupport {
         return slingSupport.doPost(uri, parts)
     }
 
-    /**
-     * Returns the base URL to control a bundle.
-     */
+
     @Nonnull
-    URI getBundleControlBaseUri() {
-        return bundleServerConfiguration.bundleControlBaseUri
+    HttpResponse stopBundle() {
+        return slingSupport.doPost(bundleUrl, ['action': 'stop'])
+    }
+
+
+    @Nonnull
+    HttpResponse startBundle() {
+        return slingSupport.doPost(bundleUrl, ['action': 'start'])
+    }
+
+
+    @Nonnull
+    HttpResponse refreshBundle() {
+        return slingSupport.doPost(bundleUrl, ['action': 'refresh'])
+    }
+
+
+    @Nonnull
+    HttpResponse updateBundle() {
+        return slingSupport.doPost(bundleUrl, ['action': 'update'])
+    }
+
+
+    @Nonnull
+    HttpResponse uninstallBundle() {
+        return slingSupport.doPost(bundleUrl, ['action': 'uninstall'])
+    }
+
+
+    @Nonnull
+    HttpResponse removeBundle(URI bundleLocation) {
+        return slingSupport.doPost(bundleLocation, [':operation': 'delete'])
+    }
+
+
+    @Nonnull
+    HttpResponse uploadBundle() {
+        def serverConfiguration = slingSupport.serverConf
+        if (!serverConfiguration.active) throw new IllegalArgumentException("serverConfiguration ${serverConfiguration.name} is not active")
+
+        final installUri = bundleConfiguration.getBundleInstallUrl(serverConfiguration)
+        final sourceFile = bundleConfiguration.sourceFile
+
+        if (slingSupport.makePath(installUri)) {
+            String filename = sourceFile.name
+            log.info("Uploading ${filename} to ${installUri}")
+            def resp = slingSupport.doPost(installUri, [
+                (filename): new FileBody(sourceFile, 'application/java-archive'),
+            ])
+            log.info("Finished upload of ${filename} to ${installUri}")
+            return resp
+        }
+        else {
+            return new HttpResponse(HTTP_BAD_METHOD, 'Could not create area to put file in')
+        }
     }
 
     /**
-     * Returns the URL to use to do actions on bundles.
+     * The bundle control URI using the server configuration
      */
     @Nonnull
-    URI getBundlesControlUri() {
-        URI base = serverConf.baseUri
-        new URI(base.scheme, base.userInfo, base.host, base.port, "${BundleServerConfiguration.BUNDLE_CONTROL_BASE_PATH}.json", null, null)
+    URI getBundleUrl() {
+        return SlingBundleConfiguration.getTheBundleUrl(bundleConfiguration.symbolicName, this.bundleServerConfiguration)
+    }
+
+
+    @Nonnull
+    static HttpResponse refreshOsgiPackages(@Nonnull SlingSupport slingSupport, @Nonnull URI bundleControlUri) {
+        return slingSupport.doPost(bundleControlUri, ['action': 'refreshPackages'])
     }
 
 }

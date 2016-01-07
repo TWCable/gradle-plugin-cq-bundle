@@ -62,7 +62,7 @@ class SlingBundleFixture {
                 fragment    : false,
                 stateRaw    : bundleState.stateRaw,
                 state       : bundleState.stateString,
-                version     : bundleConfiguration.project.version,
+                version     : bundleConfiguration.version,
                 symbolicName: bundleConfiguration.symbolicName,
                 category    : ""
         ]
@@ -73,8 +73,8 @@ class SlingBundleFixture {
      */
     @Nonnull
     List<Map<String, Object>> bundleProperties() {
-        def version = bundleConfiguration.project.version
-        def description = bundleConfiguration.project.description
+        def version = bundleConfiguration.version
+        def description = bundleConfiguration.symbolicName
         def symbolicName = bundleConfiguration.symbolicName
         def packageName = symbolicName.split(/\./).reverse().join('.')
 

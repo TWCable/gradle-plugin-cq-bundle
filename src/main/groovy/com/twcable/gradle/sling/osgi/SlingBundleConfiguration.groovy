@@ -18,24 +18,15 @@ package com.twcable.gradle.sling.osgi
 import com.twcable.gradle.sling.SlingServerConfiguration
 import groovy.transform.TypeChecked
 import groovy.util.logging.Slf4j
-import org.gradle.api.Project
-import org.gradle.api.internal.plugins.osgi.OsgiHelper
-import org.gradle.api.tasks.bundling.AbstractArchiveTask
 
 import javax.annotation.Nonnull
 
 /**
- * Convention settings to describe an OSGi bundle.
- *
- * Follows to patterns used for a Gradle "named domain object".
+ * Description of an OSGi bundle.
  */
 @Slf4j
 @TypeChecked
 class SlingBundleConfiguration {
-    /**
-     * The name to register the configuration under in the project's extensions
-     */
-    public static final String NAME = 'bundle'
 
     /**
      * The path to install the bundle under if none is explicitly provided
@@ -44,26 +35,31 @@ class SlingBundleConfiguration {
 
     String name
 
-    private String _symbolicName
+    protected String _symbolicName
+    protected String _version
 
     // TODO: Guard against trailing slash
     String installPath = DEFAULT_INSTALL_PATH
 
-    private File _sourceFile
+    protected File _sourceFile
 
-    @SuppressWarnings("GrFinalVariableAccess")
-    final Project project
 
-    // TODO: Remove the Project dependency
-    SlingBundleConfiguration(@Nonnull Project project) {
-        if (project == null) throw new IllegalArgumentException("project == null")
-        this.project = project
+    protected SlingBundleConfiguration() {
+        // subclasses using this constructor should be careful to set 'symbolicName' and 'version'
+    }
+
+
+    @SuppressWarnings("GroovyUnusedDeclaration")
+    SlingBundleConfiguration(@Nonnull String symbolicName, @Nonnull String version) {
+        if (symbolicName == null) throw new IllegalArgumentException("symbolicName == null")
+        if (version == null) throw new IllegalArgumentException("symbolicName == null")
+        this._symbolicName = symbolicName
     }
 
 
     @Override
     String toString() {
-        return "SlingBundleConfiguration(${symbolicName} for project ${project.path})"
+        return "SlingBundleConfiguration(${symbolicName})"
     }
 
 
@@ -78,11 +74,19 @@ class SlingBundleConfiguration {
     @Nonnull
     File getSourceFile() {
         if (_sourceFile == null) {
-            if (project.tasks.findByName('jar') == null) throw new IllegalStateException("There is not a 'jar' task for ${project}")
-            // don't cache this lookup in case task's path changes later in the lifecycle
-            return (project.tasks.getByName('jar') as AbstractArchiveTask).archivePath
+            throw new IllegalStateException("Source file has not been set for ${this}")
         }
         return _sourceFile
+    }
+
+
+    void setVersion(String version) {
+        this._version = version
+    }
+
+
+    String getVersion() {
+        return _version
     }
 
 
@@ -91,15 +95,10 @@ class SlingBundleConfiguration {
     }
 
     /**
-     * Returns the bundle's symbolic name. If not explicitly set, derives it using
-     * {@link OsgiHelper#getBundleSymbolicName(Project)}
+     * Returns the bundle's symbolic name.
      */
     @Nonnull
     String getSymbolicName() {
-        if (_symbolicName == null) {
-            def osgiHelper = new OsgiHelper()
-            _symbolicName = osgiHelper.getBundleSymbolicName(project)
-        }
         return _symbolicName
     }
 

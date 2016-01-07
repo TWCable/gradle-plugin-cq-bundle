@@ -139,6 +139,7 @@ class SlingServersConfiguration implements Iterable<SlingServerConfiguration> {
      * Creates and initializes this using the values in the Project properties, Java System properties,
      * and the System environment.
      */
+    // TODO remove hard dependency on Project
     SlingServersConfiguration(@Nonnull Project project) {
         this(project, System.getenv())
     }

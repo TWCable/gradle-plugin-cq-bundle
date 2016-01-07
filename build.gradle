@@ -104,3 +104,32 @@ groovydoc {
     link("http://docs.oracle.com/javase/8/docs/api/", 'java.')
     link("http://docs.groovy-lang.org/latest/html/api/", 'groovy.')
 }
+
+jar {
+    from sourceSets.main.output
+
+    // hack: including test output in main JAR since Gradle's dependency mechanism doesn't take classifier
+    // into account so it gets resolved to the same artifact as the main
+    from sourceSets.test.output
+}
+
+//task testJar(type: Jar) {
+//    appendix "tests"
+//    from sourceSets.test.output
+//}
+//
+//project.artifacts {
+//    archives testJar
+//}
+//
+//publishing {
+//    publications {
+//        test(MavenPublication) {
+//            from components.java
+//            artifact testJar {
+////                artifactId "${project.name}-tests"
+////                classifier 'tests'
+//            }
+//        }
+//    }
+//}
