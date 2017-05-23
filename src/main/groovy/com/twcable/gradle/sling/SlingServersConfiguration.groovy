@@ -15,7 +15,6 @@
  */
 package com.twcable.gradle.sling
 
-import com.google.common.collect.ImmutableMap
 import groovy.transform.CompileStatic
 import groovy.transform.Immutable
 import groovy.transform.InheritConstructors
@@ -302,7 +301,7 @@ class SlingServersConfiguration implements Iterable<SlingServerConfiguration> {
         }
         return serverEnvs.collectEntries {
             final configKey = ((String)it.key).toLowerCase().replaceAll("_", ".")
-            ImmutableMap.of(configKey, it.value)
+            [(configKey): it.value]
         } as Configuration
     }
 

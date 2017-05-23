@@ -108,7 +108,7 @@ class SlingBundleFixture {
                      "Implementation-Version: ${version}",
                      "Import-Package: javax.jcr; version=\\\"[2.0, 3)\\\", org.slf4j; version=\\\"[1.6, 2)\\\"",
                      "Manifest-Version: 1.0"]]
-        ]
+        ] as List<Map<String, Object>>
     }
 
 
