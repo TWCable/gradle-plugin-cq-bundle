@@ -29,7 +29,7 @@ Built against *Gradle 3.5* and *JDK 1.8*
 
 # API #
 
-https://twcable.github.io/gradle-plugin-cq-bundle/docs/groovydoc/
+https://twcable.github.io/gradle-plugin-cq-bundle/groovydoc/
 
 # LICENSE
 
