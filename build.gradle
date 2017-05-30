@@ -45,6 +45,7 @@ dependencies {
 
 bintray {
     pkg {
+        userOrg = 'twcable'
         licenses = ['Apache-2.0']
         attributes = ['plat': ['gradle', 'aem', 'osgi', 'sling', 'cq']]
 
