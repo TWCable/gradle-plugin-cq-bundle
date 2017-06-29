@@ -22,6 +22,7 @@ import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.internal.TaskInternal
+import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.internal.tasks.CachingTaskDependencyResolveContext
 
 import javax.annotation.Nonnull
@@ -29,7 +30,7 @@ import javax.annotation.Nonnull
 @CompileStatic
 class GradleUtils {
 
-    public static <T> T extension(Project project, Class<T> confClass, Object... args) {
+    static <T> T extension(Project project, Class<T> confClass, Object... args) {
         def conf = project.extensions.findByType(confClass)
         if (conf != null) return conf
 
@@ -42,8 +43,15 @@ class GradleUtils {
      * Execute a task with its dependencies
      */
     static void execute(@Nonnull Task task) {
+        ensureProjectEvaluated(task)
         def context = new CachingTaskDependencyResolveContext()
         executeWithCtx(task, context)
+    }
+
+
+    private static void ensureProjectEvaluated(Task task) {
+        final project = task.project as ProjectInternal
+        if (!project.getState().executing /* implies that it's neither executed nor executing */) project.evaluate()
     }
 
 
@@ -63,7 +71,7 @@ class GradleUtils {
 
     @TypeChecked(TypeCheckingMode.SKIP)
     @SuppressWarnings("GroovyUnusedDeclaration")
-    public static void taskDependencyGraph(Project project, Collection<Task> theTasks = null) {
+    static void taskDependencyGraph(Project project, Collection<Task> theTasks = null) {
         // TODO: Tie into the "Reporting" infrastructure of Gradle
         StringBuilder sb = new StringBuilder("digraph Compile {\n")
         sb.append("  node [style=filled, color=lightgray]\n")
