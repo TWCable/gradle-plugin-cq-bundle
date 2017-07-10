@@ -12,16 +12,8 @@ See [the CQ Bundle Plugin documentation](docs/CqBundlePlugin.adoc)
 # Installation #
 
 ```
-buildscript {
-    repositories {
-        maven {
-            url "http://dl.bintray.com/twcable/aem"
-        }
-    }
-
-    dependencies {
-        classpath "com.twcable.gradle:gradle-plugin-cq-bundle:<version>"
-    }
+plugins {
+  id "com.twcable.cq-bundle" version "2.2.2"
 }
 ```
 
