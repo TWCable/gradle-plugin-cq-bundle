@@ -12,14 +12,30 @@ buildscript {
 
 plugins {
     id 'com.jfrog.bintray' version '1.4'
+    id 'com.gradle.plugin-publish' version '0.9.7'
 }
 
 group = 'com.twcable.gradle'
-description = 'Gradle plugins for working with OSGi bundles in Adobe CQ/AEM'
+description = 'Gradle plugin for working with OSGi bundles in Adobe CQ/AEM'
 
 apply plugin: 'groovy'
 
 apply plugin: 'java-gradle-plugin'
+
+pluginBundle {
+    website = 'https://github.com/TWCable/gradle-plugin-cq-bundle'
+    vcsUrl = 'https://github.com/TWCable/gradle-plugin-cq-bundle.git'
+
+    //noinspection GroovyAssignabilityCheck
+    plugins {
+        cqBundle {
+            id = 'com.twcable.cq-bundle'
+            displayName = 'OSGi bundles in Adobe CQ/AEM'
+            description = 'A plugin that helps you work with OSGi bundles in Adobe CQ/AEM'
+            tags = ['aem', 'osgi', 'sling', 'cq']
+        }
+    }
+}
 
 def httpcomponents_version = '4.1.2'
 
@@ -75,6 +91,8 @@ defaults {
 
     copyrightYears = '2014-2017'
 }
+
+tasks.release.dependsOn publishPlugins
 
 wrapper {
     gradleVersion = "3.5"
